@@ -1,12 +1,18 @@
 [project]
-name = "mypackage"
+name = "arborist-experiments"
 version = "0.1.0"
 
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
+    "arborist @ git+https://github.com/AllenInstitute/arborist.git",
+    "neuron-proofreader @ git+https://github.com/AllenInstitute/neuron-proofreader.git",
+    "networkx",
+    "numpy",
+    "pandas",
     "pytest>=8.3.5",
     "ruff>=0.9.9",
+    "torch>=2.1.0",
 ]
 
 [project.optional-dependencies]
