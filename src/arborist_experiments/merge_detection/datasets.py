@@ -33,6 +33,7 @@ from torch.utils.data import Dataset
 from arborist.data.datasets import TreeSample, _build_line_graph_edge_index
 from arborist.utils.graph_utils import topological_decomposition
 from arborist.utils.swc_loading import Reader
+from arborist.utils.util import write_json
 
 
 class MergeGraphDataset(Dataset):
@@ -54,6 +55,10 @@ class MergeGraphDataset(Dataset):
         Graph node IDs at nonmerge sites (negative examples).
     max_depth : float, optional
         Subgraph extraction radius in microns. Default is 100.
+    min_curve_len : int, optional
+        Minimum number of points per curve. Curves shorter than this are
+        zero-padded so CurveEncoder produces at least one segment token.
+        Should match the segment_len used in CurveEncoder (default 10).
     class_ratios : tuple[float, float], optional
         (positive_ratio, negative_ratio) used for rebalancing. Default is
         (0.5, 0.5).
@@ -71,6 +76,7 @@ class MergeGraphDataset(Dataset):
         merge_nodes,
         nonmerge_nodes,
         max_depth=1000,
+        min_curve_len=10,
         class_ratios=(0.5, 0.5),
         rebalance_classes=True,
         transform=None,
@@ -80,9 +86,17 @@ class MergeGraphDataset(Dataset):
         self.merge_nodes = list(merge_nodes)
         self.nonmerge_nodes = list(nonmerge_nodes)
         self.max_depth = max_depth
+        self.min_curve_len = min_curve_len
         self.class_ratios = class_ratios
         self.rebalance_classes = rebalance_classes
         self.transform = transform
+        self.config = {
+            "max_depth": max_depth,
+            "min_curve_len": min_curve_len,
+            "class_ratios": list(class_ratios),
+            "rebalance_classes": rebalance_classes,
+            "transform": type(transform).__name__ if transform else None,
+        }
         self._build_index()
 
     # --- Index ---
@@ -135,6 +149,9 @@ class MergeGraphDataset(Dataset):
                 xyz = self.transform(xyz)
             xyz -= xyz[0]
             xyz[1:] -= xyz[:-1].copy()
+            if len(xyz) < self.min_curve_len:
+                pad = np.zeros((self.min_curve_len - len(xyz), 3), dtype=xyz.dtype)
+                xyz = np.concatenate([xyz, pad], axis=0)
             curves.append(xyz)
 
         edge_index = _build_line_graph_edge_index(topo_edge_index)
@@ -142,6 +159,17 @@ class MergeGraphDataset(Dataset):
 
     def __len__(self):
         return len(self._index)
+
+    def save_config(self, path):
+        """
+        Saves dataset parameters to a JSON file.
+
+        Parameters
+        ----------
+        path : str
+            Destination file path.
+        """
+        write_json(path, self.config)
 
     def __repr__(self):
         return (
