@@ -95,7 +95,7 @@ class MergeDetector(nn.Module):
             Path to a CurveAutoencoder checkpoint (.pth).
         """
         checkpoint = torch.load(path, weights_only=False)
-        full_sd = checkpoint["model_state_dict"]
+        full_sd = checkpoint["model_state"] if "model_state" in checkpoint else checkpoint
         curve_encoder_sd = {
             k[len("encoder."):]: v
             for k, v in full_sd.items()
@@ -113,6 +113,7 @@ class MergeDetector(nn.Module):
         for param in self.encoder.curve_encoder.parameters():
             param.requires_grad = True
 
+    @torch._dynamo.disable
     def forward(self, samples):
         """
         Encodes a batch of rooted subgraphs and returns merge logits.
