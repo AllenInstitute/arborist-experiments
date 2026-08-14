@@ -54,14 +54,14 @@ class GraphTrainer(Trainer):
             # Run epoch
             train_stats = self.train_step(train_dataloader, epoch)
             val_stats = self.validate_step(val_dataloader, epoch)
-            new_best = self.check_model_performance(val_stats, epoch)
-
-            # Report results
-            print("\nEpoch: " + ("New Best!" if new_best else " "))
-            self.report_stats(train_stats, is_train=True)
-            self.report_stats(val_stats, is_train=False)
             self.scheduler.step()
 
+            # Report results
+            new_best = self.check_model_performance(val_stats, epoch)
+            print(f"Epoch: {epoch} " + ("- New Best!" if new_best else " "))
+            self.report_stats(train_stats, is_train=True)
+            self.report_stats(val_stats, is_train=False)
+            print()
 
 def _rebuild_index(dataset):
     """Calls rebuild_index() on a MergeGraphDataset or a collection of them."""

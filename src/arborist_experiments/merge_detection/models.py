@@ -130,8 +130,13 @@ class MergeDetector(nn.Module):
         """
         z_trees = []
         for sample in samples:
-            z_tree, _ = self.encoder.encode(sample)
-            z_trees.append(z_tree)
+            _, z_curves = self.encoder.encode(sample)
+            if sample.root_curve_indices:
+                idx = torch.tensor(sample.root_curve_indices, device=z_curves.device)
+                z = z_curves[idx].mean(dim=0)
+            else:
+                z = z_curves.mean(dim=0)
+            z_trees.append(z)
         z = torch.stack(z_trees)  # (B, latent_dim)
         return self.head(z)       # (B, 1)
 
