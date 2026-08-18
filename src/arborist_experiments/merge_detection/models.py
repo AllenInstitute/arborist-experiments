@@ -40,8 +40,8 @@ class MergeDetector(nn.Module):
         Default is True.
     **arborist_kwargs
         Additional keyword arguments forwarded to the Arborist constructor
-        (e.g. segment_len, d_token, curve_n_heads, curve_n_layers, d_ff_curve,
-        graph_n_heads, graph_n_layers, d_ff_graph).
+        (e.g. curve_segment_len, curve_d_token, curve_n_heads, curve_n_layers, curve_d_ff,
+        graph_n_heads, graph_n_layers, graph_d_ff).
     """
 
     def __init__(
@@ -85,8 +85,8 @@ class MergeDetector(nn.Module):
         keys. This method strips that prefix and loads the weights into
         self.encoder.curve_encoder (the CurveEncoder inside Arborist).
 
-        The Arborist kwargs passed to MergeDetector (segment_len, d_token,
-        curve_n_heads, curve_n_layers, d_ff_curve, latent_dim) must match the
+        The Arborist kwargs passed to MergeDetector (curve_segment_len, curve_d_token,
+        curve_n_heads, curve_n_layers, curve_d_ff, latent_dim) must match the
         architecture used when training the CurveAutoencoder.
 
         Parameters

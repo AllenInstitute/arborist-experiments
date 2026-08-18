@@ -58,7 +58,7 @@ class MergeGraphDataset(Dataset):
     min_curve_len : int, optional
         Minimum number of points per curve. Curves shorter than this are
         zero-padded so CurveEncoder produces at least one segment token.
-        Should match the segment_len used in CurveEncoder (default 10).
+        Should match the curve_segment_len used in CurveEncoder (default 10).
     class_ratios : tuple[float, float], optional
         (positive_ratio, negative_ratio) used for rebalancing. Default is
         (0.5, 0.5).
