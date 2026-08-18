@@ -137,7 +137,7 @@ def get_argparser():
     # Encoder (must match pretrained CurveAutoencoder if loading weights)
     parser.add_argument("--latent_dim", type=int, default=64)
     parser.add_argument("--curve_n_layers", type=int, default=4)
-    parser.add_argument("--d_token", type=int, default=128)
+    parser.add_argument("--curve_d_token", type=int, default=128)
     parser.add_argument("--graph_n_layers", type=int, default=3)
 
     # Classifier head
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     model = MergeDetector(
         latent_dim=args.latent_dim,
         hidden_dim=args.hidden_dim,
-        d_token=args.d_token,
+        curve_d_token=args.curve_d_token,
         curve_n_layers=args.curve_n_layers,
         graph_n_layers=args.graph_n_layers,
         pretrained_curve_encoder_path=args.pretrained_curve_encoder_path,
