@@ -19,6 +19,9 @@ class GraphTrainer(Trainer):
     Trainer subclass for graph-input models (List[TreeSample] → logits).
     """
 
+    def __init__(self, *args, enforced_recall=None, **kwargs):
+        super().__init__(*args, enforced_recall=enforced_recall, **kwargs)
+
     def forward_pass(self, samples, y):
         """
         Parameters
@@ -58,7 +61,7 @@ class GraphTrainer(Trainer):
 
             # Report results
             new_best = self.check_model_performance(val_stats, epoch)
-            print(f"Epoch: {epoch} " + ("- New Best!" if new_best else " "))
+            print(f"Epoch {epoch} " + ("- New Best!" if new_best else " "))
             self.report_stats(train_stats, is_train=True)
             self.report_stats(val_stats, is_train=False)
             print()
