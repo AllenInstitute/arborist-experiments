@@ -6,22 +6,6 @@ Created on Sun August 10 2026
 
 Dataset utilities for training a merge-detection model on graph structure only.
 
-Architecture
-------------
-MergeGraphDataset
-    Flat dataset of (TreeSample, label) pairs over a single FragmentsGraph.
-    Each item extracts a rooted subgraph centred on a merge or nonmerge site,
-    decomposes it via topological_decomposition, and returns a TreeSample with
-    first-difference curves and line-graph edge_index — the same format
-    consumed by Arborist.
-
-load_merge_sites
-    Helper that reads SWC files from a cloud or local sites prefix and maps
-    each site's first xyz coordinate to the nearest graph node.
-
-collate_merge_samples
-    Custom DataLoader collate function that handles the variable-structure
-    TreeSample objects.
 """
 
 import os
@@ -29,6 +13,61 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+
+
+class GraphSearchDataset(Dataset):
+    """
+    Unlabelled dataset over all branching nodes of a FragmentsGraph.
+
+    Used during evaluation: each item is a (node_id, TreeSample) pair so the
+    caller can look up xyz coordinates after running inference.
+
+    Parameters
+    ----------
+    graph : FragmentsGraph
+        Graph to search over.
+    depth : float
+        Subgraph extraction radius in microns.
+    min_curve_len : int, optional
+        Minimum number of points per curve; shorter curves are zero-padded.
+        Default is 10.
+    """
+
+    def __init__(self, graph, depth, min_curve_len=10):
+        super().__init__()
+        self.graph = graph
+        self.depth = depth
+        self.min_curve_len = min_curve_len
+        self.nodes = list(graph.branching_nodes())
+
+    def __len__(self):
+        return len(self.nodes)
+
+    def __getitem__(self, i):
+        node = self.nodes[i]
+        subgraph = self.graph.rooted_subgraph(node, self.depth)
+        _, paths, topo_edge_index = topological_decomposition(subgraph)
+
+        curves = []
+        for path in paths:
+            xyz = subgraph.node_xyz[path].copy()
+            xyz -= xyz[0]
+            xyz[1:] -= xyz[:-1].copy()
+            if len(xyz) < self.min_curve_len:
+                pad = np.zeros((self.min_curve_len - len(xyz), 3), dtype=xyz.dtype)
+                xyz = np.concatenate([xyz, pad], axis=0)
+            curves.append(xyz)
+
+        edge_index = _build_line_graph_edge_index(topo_edge_index)
+        root_curve_indices = [j for j, (src, _) in enumerate(topo_edge_index) if src == 0]
+        return node, TreeSample(curves=curves, edge_index=edge_index, root_curve_indices=root_curve_indices)
+
+
+def collate_search_samples(batch):
+    nodes = [item[0] for item in batch]
+    samples = [item[1] for item in batch]
+    return nodes, samples
+
 
 from arborist.data.datasets import TreeSample, _build_line_graph_edge_index
 from arborist.utils.graph_utils import topological_decomposition
