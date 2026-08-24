@@ -167,5 +167,9 @@ class MergeDetector(nn.Module):
         """
         checkpoint = torch.load(path, weights_only=False)
         model = cls(**checkpoint["config"])
-        model.load_state_dict(checkpoint["state_dict"])
+        state_dict = {
+            (k[len("_orig_mod."):] if k.startswith("_orig_mod.") else k): v
+            for k, v in checkpoint["state_dict"].items()
+        }
+        model.load_state_dict(state_dict)
         return model
