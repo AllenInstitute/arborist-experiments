@@ -7,12 +7,19 @@ requires-python = ">=3.10"
 dependencies = [
     "arborist @ git+https://github.com/AllenInstitute/arborist.git",
     "neuron-proofreader @ git+https://github.com/AllenInstitute/neuron-proofreader.git",
+    "h5py",
+    "matplotlib",
+    "morphopy",
     "networkx",
     "numpy",
     "pandas",
+    "persim",
+    "pyarrow",
     "pytest>=8.3.5",
     "ruff>=0.9.9",
+    "scikit-learn",
     "torch>=2.1.0",
+    "umap-learn",
 ]
 
 [project.optional-dependencies]
