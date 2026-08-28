@@ -109,7 +109,8 @@ def test_cell_invariants(cache):
         assert np.abs(c.xyz[soma[0]]).max() < 1e-3
         assert np.all(c.radius == 1.0)
         assert not c.synthetic_edge.any()
-        assert c.types.dtype == np.int32 and c.parents.dtype == np.int64
+        # uint8, not int32: types is now the SkeletonGraph node-attr registry's dtype.
+        assert c.types.dtype == np.uint8 and c.parents.dtype == np.int64
         assert c.xyz.dtype == np.float64
 
 

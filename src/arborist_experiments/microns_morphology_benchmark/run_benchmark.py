@@ -29,7 +29,7 @@ import numpy as np
 from arborist_experiments.morphology_cv import persistence
 from arborist_experiments.morphology_cv.classifier import GRID, boundary_hits, run_cv
 from arborist_experiments.patchseq_morphology_benchmark.gaussian_baseline import run_gaussian_cv
-from arborist_experiments.patchseq_morphology_benchmark.plots import (
+from arborist_experiments.cells.plots import (
     plot_confusion, plot_embedding,
 )
 from . import feature_cache

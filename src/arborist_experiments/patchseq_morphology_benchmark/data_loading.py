@@ -1,32 +1,35 @@
-from dataclasses import dataclass, field
 from typing import Optional
 
 import h5py
 import numpy as np
 
+from arborist_experiments.cells import (
+    CellGraph,
+    Cohort,
+    TYPE_APICAL,
+    TYPE_AXON,
+    TYPE_BASAL,
+    TYPE_SOMA,
+)
 
-TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL = 1, 2, 3, 4
+# Re-exported so the 8 modules that import `Cell`, `Cohort` and the TYPE_*
+# constants from here keep working. `Cell` is the old dataclass's name for what
+# is now a SkeletonGraph subclass; the six field accesses it exposed are
+# unchanged.
+Cell = CellGraph
 
-
-@dataclass
-class Cell:
-    specimen_id: str
-    types: np.ndarray      # (N,) int  -- SWC compartment type: 1=soma, 2=axon, 3=basal, 4=apical
-    parents: np.ndarray    # (N,) int  -- 0-based parent index; root has parent = -1
-    xyz: np.ndarray        # (N, 3) float64 -- swc_upright, soma-centered on all three axes
-    radius: np.ndarray     # (N,) float -- constant; see _iter_swc
-    synthetic_edge: np.ndarray  # (N,) bool -- node's parent link was invented by _reparent_to_soma
-
-
-@dataclass
-class Cohort:
-    cells: list[Cell]
-    labels: np.ndarray                 # (n_cells,) int label index
-    label_names: list[str]             # class name per label index
-    subclass_by_id: dict[str, str] = field(default_factory=dict)
-
-    def __len__(self):
-        return len(self.cells)
+__all__ = [
+    "Cell",
+    "CellGraph",
+    "Cohort",
+    "TYPE_APICAL",
+    "TYPE_AXON",
+    "TYPE_BASAL",
+    "TYPE_SOMA",
+    "build_cohort",
+    "load_precomputed_morphometrics",
+    "load_subclass_labels",
+]
 
 
 def load_subclass_labels(met_path: str) -> dict[str, str]:
@@ -100,8 +103,9 @@ def _iter_swc(swc_path: str):
             xyz = xyz - _soma_origin(xyz, types)
             radius = np.ones(len(types), dtype=np.float64)
             parents, synthetic = _reparent_to_soma(types, parents)
-            yield Cell(specimen_id=sid, types=types, parents=parents, xyz=xyz,
-                       radius=radius, synthetic_edge=synthetic)
+            yield CellGraph.from_arrays(
+                specimen_id=sid, types=types, parents=parents, xyz=xyz,
+                radius=radius, synthetic_edge=synthetic)
 
 
 def build_cohort(

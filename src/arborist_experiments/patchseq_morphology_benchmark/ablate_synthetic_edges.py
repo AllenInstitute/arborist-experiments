@@ -46,7 +46,7 @@ from arborist_experiments.patchseq_morphology_benchmark import features as F
 from arborist_experiments.morphology_cv.classifier import run_cv
 from arborist_experiments.patchseq_morphology_benchmark.data_loading import Cell, build_cohort
 from arborist_experiments.patchseq_morphology_benchmark.modality import filter_cell
-from arborist_experiments.patchseq_morphology_benchmark.plots import plot_confusion, plot_embedding
+from arborist_experiments.cells.plots import plot_confusion, plot_embedding
 from arborist_experiments.patchseq_morphology_benchmark.swc_adapter import cell_to_neurontree
 from arborist_experiments.patchseq_morphology_benchmark.run_benchmark import (
     _log, _next_version_dir, _write_rows,
@@ -111,7 +111,7 @@ def _build_nt_somacomp(cell: Cell, modality: str):
              else old_to_new[sub.parents[i]] for i in np.flatnonzero(keep)],
             dtype=np.int64,
         )
-        pruned = Cell(
+        pruned = Cell.from_arrays(
             specimen_id=sub.specimen_id,
             types=sub.types[keep].copy(),
             parents=parents,

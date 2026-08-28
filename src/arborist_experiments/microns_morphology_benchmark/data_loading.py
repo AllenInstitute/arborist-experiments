@@ -29,7 +29,7 @@ import h5py
 import numpy as np
 
 from arborist_experiments.patchseq_morphology_benchmark.data_loading import (
-    Cell, Cohort, TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL,
+    Cell, CellGraph, Cohort, TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL,
 )
 
 
@@ -51,7 +51,7 @@ INH_COARSE_CLASSES = ("AltBasket", "AltDTC", "ChC", "DTC", "ITC", "ITCperi", "L1
                       "NGC", "NMC", "PV")
 
 __all__ = [
-    "Cell", "Cohort", "SwcCache", "TYPE_SOMA", "TYPE_AXON", "TYPE_BASAL", "TYPE_APICAL",
+    "Cell", "CellGraph", "Cohort", "SwcCache", "TYPE_SOMA", "TYPE_AXON", "TYPE_BASAL", "TYPE_APICAL",
     "EXC_COARSE_CLASSES", "INH_COARSE_CLASSES", "load_cache", "cell_from_cache", "load_labels",
     "build_cohort", "build_inh_cohort", "build_cohort_from_source", "SOURCES",
     "subsample_proportional", "subsample_per_class", "class_counts", "soma_depth_features",
@@ -104,7 +104,7 @@ def cell_from_cache(cache: SwcCache, row: int, real_radius: bool = False) -> Cel
         radius = cache.radius[lo:hi].astype(np.float64)
     else:
         radius = np.ones(n, dtype=np.float64)
-    return Cell(
+    return CellGraph.from_arrays(
         specimen_id=cache.specimens[row],
         types=cache.types[lo:hi].astype(np.int32),
         parents=cache.parents[lo:hi].astype(np.int64),

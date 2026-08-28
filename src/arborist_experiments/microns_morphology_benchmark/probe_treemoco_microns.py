@@ -43,7 +43,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from arborist_experiments.morphology_cv import persistence
 from arborist_experiments.morphology_cv.classifier import CVResult, boundary_hits, run_cv
-from arborist_experiments.patchseq_morphology_benchmark.plots import plot_confusion
+from arborist_experiments.cells.plots import plot_confusion
 from arborist_experiments.patchseq_morphology_benchmark.treemoco.augment import (
     PRESETS, AugmentConfig, augment, identity_view,
 )

@@ -42,7 +42,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..data_loading import Cell
+from arborist_experiments.cells import CellGraph
 
 
 N_POLYLINE = 33                     # stored points per branch; L and C are measured on these
@@ -119,7 +119,7 @@ def resample_fixed(xyz: np.ndarray, n_points: int) -> np.ndarray:
     return np.stack([np.interp(t, arc, pts[:, k]) for k in range(3)], axis=1)
 
 
-def collapse(cell: Cell) -> CollapsedTree:
+def collapse(cell: CellGraph) -> CollapsedTree:
     """Reduce `cell` to root, branch points and tips, keeping each dropped chain as a polyline.
 
     Degree-1 nodes are exactly the nodes with one child that are not the root. Working from the

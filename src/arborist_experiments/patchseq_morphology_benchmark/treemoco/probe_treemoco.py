@@ -40,7 +40,7 @@ from torch.utils.data import DataLoader, Dataset
 from arborist_experiments.morphology_cv import classifier
 from arborist_experiments.morphology_cv.classifier import CVResult, run_cv
 from ..data_loading import Cohort, build_cohort, load_precomputed_morphometrics
-from ..plots import plot_confusion, plot_embedding
+from arborist_experiments.cells.plots import plot_confusion, plot_embedding
 from ..probe_path_encodings import load_pooled
 from ..run_benchmark import _log, _next_version_dir, _write_rows
 from .augment import PRESETS, AugmentConfig, augment, identity_view

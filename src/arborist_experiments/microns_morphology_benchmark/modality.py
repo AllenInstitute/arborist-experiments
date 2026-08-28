@@ -21,8 +21,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Optional
 
-import numpy as np
-
 from arborist_experiments.patchseq_morphology_benchmark.data_loading import (
     Cell, TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL,
 )
@@ -88,42 +86,4 @@ def patchseq_modality_types():
 def filter_cell(cell: Cell, modality: str) -> Optional[Cell]:
     if modality not in MODALITY_TYPES:
         raise ValueError(f"Unknown modality {modality!r}")
-    keep_types = MODALITY_TYPES[modality]
-
-    types = cell.types
-    parents = cell.parents
-    n = len(types)
-
-    keep_mask = np.isin(types, list(keep_types))
-    # 99.6% of cells are pure soma+dendrite, so for the default modality this is the whole
-    # cohort: skip the reindexing loops and hand back byte-identical arrays.
-    if keep_mask.all():
-        return cell
-    if keep_mask.sum() < 3:
-        return None
-    if not (keep_mask & (types != TYPE_SOMA)).any():
-        return None
-
-    old_to_new = -np.ones(n, dtype=np.int64)
-    new_indices = np.flatnonzero(keep_mask)
-    old_to_new[new_indices] = np.arange(len(new_indices))
-
-    new_parents = np.full(len(new_indices), -1, dtype=np.int64)
-    new_synthetic = np.zeros(len(new_indices), dtype=bool)
-    for new_i, old_i in enumerate(new_indices):
-        p = int(parents[old_i])
-        syn = bool(cell.synthetic_edge[old_i])
-        while p != -1 and not keep_mask[p]:
-            syn = syn or bool(cell.synthetic_edge[p])
-            p = int(parents[p])
-        new_parents[new_i] = -1 if p == -1 else int(old_to_new[p])
-        new_synthetic[new_i] = syn
-
-    return Cell(
-        specimen_id=cell.specimen_id,
-        types=types[keep_mask].copy(),
-        parents=new_parents,
-        xyz=cell.xyz[keep_mask].copy(),
-        radius=cell.radius[keep_mask].copy(),
-        synthetic_edge=new_synthetic,
-    )
+    return cell.filtered(MODALITY_TYPES[modality])

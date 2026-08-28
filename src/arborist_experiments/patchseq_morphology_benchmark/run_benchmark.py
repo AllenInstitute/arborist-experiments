@@ -35,7 +35,7 @@ from arborist_experiments.patchseq_morphology_benchmark.features import (
 from arborist_experiments.morphology_cv.classifier import boundary_hits, run_cv
 from arborist_experiments.patchseq_morphology_benchmark.gaussian_baseline import run_gaussian_cv
 from arborist_experiments.patchseq_morphology_benchmark.radial_arbor_features import extract_radial_arbors
-from arborist_experiments.patchseq_morphology_benchmark.plots import plot_confusion, plot_embedding
+from arborist_experiments.cells.plots import plot_confusion, plot_embedding
 
 
 EXTRACTORS = {

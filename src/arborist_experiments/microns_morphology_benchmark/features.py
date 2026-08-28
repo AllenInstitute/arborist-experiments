@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
-from itertools import repeat
 import logging
-import os
 from typing import Optional
 
 import numpy as np
@@ -83,6 +80,8 @@ def _empty_safe_reductions():
     finally:
         feature_presentation.np = original
 
+# N_WORKERS is re-exported, not used here: the drivers log `features.N_WORKERS`.
+from arborist_experiments.cells import N_WORKERS, run_jobs
 from arborist_experiments.patchseq_morphology_benchmark.swc_adapter import cell_to_neurontree
 from .data_loading import Cell, Cohort
 from .modality import filter_cell
@@ -132,16 +131,6 @@ class FeatureResult:
     skipped: list[tuple[str, str]]      # (specimen_id, reason)
 
 
-N_WORKERS = max(1, (os.cpu_count() or 1) - 1)
-
-
-def _limit_blas_threads() -> None:
-    # Workers are already one-per-core; letting each spawn a BLAS thread pool
-    # oversubscribes and runs slower than serial.
-    for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
-        os.environ[var] = "1"
-
-
 def _build_nt(cell: Cell, modality: str):
     sub = filter_cell(cell, modality)
     if sub is None:
@@ -152,18 +141,8 @@ def _build_nt(cell: Cell, modality: str):
         return None, f"neurontree build: {type(e).__name__}: {e}"
 
 
-def _run_jobs(cohort: Cohort, job, *job_args) -> list[tuple]:
-    """Map `job` over cells, in parallel when there is more than one core.
-
-    Cells vary ~100x in node count (median 2.7k, max 32k), so chunksize=1 --
-    otherwise the workers holding the largest cells become stragglers.
-    ProcessPoolExecutor.map preserves input order, keeping row order reproducible.
-    """
-    if N_WORKERS <= 1 or len(cohort.cells) < 2:
-        return [job(cell, *job_args) for cell in cohort.cells]
-    with ProcessPoolExecutor(max_workers=N_WORKERS, initializer=_limit_blas_threads) as ex:
-        args = [repeat(a, len(cohort.cells)) for a in job_args]
-        return list(ex.map(job, cohort.cells, *args, chunksize=1))
+# Re-exported under the private name the sibling modules and drivers already import.
+_run_jobs = run_jobs
 
 
 def _job_density(cell: Cell, modality: str, axis: str):

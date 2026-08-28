@@ -21,7 +21,7 @@ from arborist_experiments.patchseq_morphology_benchmark.treemoco.model import Tr
 def make_cell(parents, xyz, types=None, synthetic=None) -> Cell:
     parents = np.asarray(parents, dtype=np.int64)
     xyz = np.asarray(xyz, dtype=np.float64)
-    return Cell(
+    return Cell.from_arrays(
         specimen_id="test",
         types=np.asarray(types if types is not None else [1] + [3] * (len(parents) - 1),
                          dtype=np.int32),
