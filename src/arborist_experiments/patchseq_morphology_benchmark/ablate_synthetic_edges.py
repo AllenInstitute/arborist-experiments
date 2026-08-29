@@ -34,7 +34,6 @@ import argparse
 import csv
 import json
 import os
-import shutil
 import time
 from collections import Counter
 
@@ -48,8 +47,11 @@ from arborist_experiments.patchseq_morphology_benchmark.data_loading import Cell
 from arborist_experiments.patchseq_morphology_benchmark.modality import filter_cell
 from arborist_experiments.cells.plots import plot_confusion, plot_embedding
 from arborist_experiments.patchseq_morphology_benchmark.swc_adapter import cell_to_neurontree
-from arborist_experiments.patchseq_morphology_benchmark.run_benchmark import (
-    _log, _next_version_dir, _write_rows,
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_dir,
+    next_version_dir as _next_version_dir,
+    write_rows,
 )
 
 
@@ -130,12 +132,7 @@ BUILDERS = {"prune": _build_nt_prune, "somacomp": _build_nt_somacomp}
 
 
 def _mirror_ablation(src_dir: str, dst_dir: str) -> None:
-    os.makedirs(dst_dir, exist_ok=True)
-    for name in sorted(os.listdir(src_dir)):
-        src = os.path.join(src_dir, name)
-        if os.path.isfile(src):
-            dst = f"{PREFIX}_{name}" if name in GENERIC_NAMES else name
-            shutil.copy2(src, os.path.join(dst_dir, dst))
+    mirror_dir(src_dir, dst_dir, prefix=f"{PREFIX}_", generic_names=GENERIC_NAMES)
 
 
 def _synthetic_inventory(cohort, modality: str) -> dict:
@@ -253,7 +250,7 @@ def main(args):
                                        int(fr.X.shape[1]), int(cv.n_samples))
 
                 tag = f"{rep}_{arm}"
-                _write_rows(writer, csv_fh, tag, MODALITY, cv)
+                write_rows(writer, tag, MODALITY, cv, csv_fh=csv_fh)
                 plot_confusion(cv.confusion, class_names,
                                os.path.join(out_dir, f"confusion_{tag}.png"),
                                title=f"{rep} / {MODALITY} / {arm} (n={cv.n_samples})")

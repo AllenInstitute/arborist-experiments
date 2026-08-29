@@ -12,10 +12,10 @@ import pytest
 import torch
 
 from arborist_experiments.patchseq_morphology_benchmark.data_loading import Cell
-from arborist_experiments.patchseq_morphology_benchmark.treemoco import augment as ag
-from arborist_experiments.patchseq_morphology_benchmark.treemoco import batching as bt
-from arborist_experiments.patchseq_morphology_benchmark.treemoco import tree_features as tf
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.model import TreeLSTMCell
+from arborist_experiments.treemoco import augment as ag
+from arborist_experiments.treemoco import batching as bt
+from arborist_experiments.treemoco import tree_features as tf
+from arborist_experiments.treemoco.model import TreeLSTMCell
 
 
 def make_cell(parents, xyz, types=None, synthetic=None) -> Cell:

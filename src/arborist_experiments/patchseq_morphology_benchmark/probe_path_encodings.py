@@ -16,7 +16,6 @@ import argparse
 import csv
 import json
 import os
-import shutil
 import time
 
 import h5py
@@ -27,8 +26,11 @@ from arborist_experiments.patchseq_morphology_benchmark import features
 from arborist_experiments.morphology_cv.classifier import run_cv
 from arborist_experiments.patchseq_morphology_benchmark.data_loading import build_cohort
 from arborist_experiments.cells.plots import plot_confusion, plot_embedding
-from arborist_experiments.patchseq_morphology_benchmark.run_benchmark import (
-    _log, _next_version_dir, _write_rows,
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_dir,
+    next_version_dir as _next_version_dir,
+    write_rows,
 )
 
 
@@ -39,13 +41,8 @@ def _mirror_probe(src_dir: str, dst_dir: str) -> None:
     would silently overwrite the encoding run's own. The scratch copy keeps the plain names
     that the capsule's versioning convention expects.
     """
-    os.makedirs(dst_dir, exist_ok=True)
-    for name in sorted(os.listdir(src_dir)):
-        src = os.path.join(src_dir, name)
-        if not os.path.isfile(src):
-            continue
-        dst_name = f"{REP_NAME}_probe_{name}" if name in GENERIC_NAMES else name
-        shutil.copy2(src, os.path.join(dst_dir, dst_name))
+    mirror_dir(src_dir, dst_dir, prefix=f"{REP_NAME}_probe_",
+               generic_names=GENERIC_NAMES)
 
 
 def load_pooled(artifact: str):
@@ -152,7 +149,7 @@ def main(args):
             summary[mod] = {k: (float(np.mean(v)), float(np.std(v)))
                             for k, v in cv.metrics.items()}
 
-            _write_rows(writer, csv_fh, REP_NAME, mod, cv)
+            write_rows(writer, REP_NAME, mod, cv, csv_fh=csv_fh)
             stem = f"{REP_NAME}_{mod}"
             plot_confusion(cv.confusion, class_names,
                            os.path.join(out_dir, f"confusion_{stem}.png"),

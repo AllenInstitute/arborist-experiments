@@ -26,7 +26,6 @@ import argparse
 import csv
 import json
 import os
-import shutil
 import time
 from types import SimpleNamespace
 
@@ -42,22 +41,28 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch.utils.data import DataLoader, Dataset
 
 from arborist_experiments.morphology_cv import persistence
-from arborist_experiments.morphology_cv.classifier import CVResult, boundary_hits, run_cv
+from arborist_experiments.morphology_cv.classifier import CVResult, run_cv
 from arborist_experiments.cells.plots import plot_confusion
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.augment import (
+from arborist_experiments.treemoco.augment import (
     PRESETS, AugmentConfig, augment, identity_view,
 )
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.batching import collate
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.model import (
+from arborist_experiments.treemoco.batching import collate
+from arborist_experiments.treemoco.model import (
     TreeClassifier, TreeEncoder,
 )
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.tree_features import (
+from arborist_experiments.treemoco.tree_features import (
     CollapsedTree, collapse,
 )
 
 from .data_loading import build_cohort_from_source, class_counts, subsample_per_class
 from .features import _run_jobs
 from .inh_constants import apply_inh_constants
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_dir,
+    next_version_dir as _next_version_dir,
+    write_rows,
+)
 
 
 REP_NAME = "treemoco_joint"
@@ -67,28 +72,8 @@ REP_NAME = "treemoco_joint"
 KEY_PREFIX = {"em_exc": "exc", "microns_inh": "inh"}
 
 
-def _log(fh, msg: str) -> None:
-    line = f"[{time.strftime('%H:%M:%S')}] {msg}"
-    print(line, flush=True)
-    fh.write(line + "\n")
-    fh.flush()
-
-
-def _next_version_dir(base: str) -> str:
-    os.makedirs(base, exist_ok=True)
-    used = {int(d[1:]) for d in os.listdir(base) if d.startswith("v") and d[1:].isdigit()}
-    out = os.path.join(base, f"v{max(used, default=0) + 1}")
-    os.makedirs(out)
-    return out
-
-
 def _mirror(src_dir: str, dst_dir: str) -> None:
-    os.makedirs(dst_dir, exist_ok=True)
-    for name in sorted(os.listdir(src_dir)):
-        src = os.path.join(src_dir, name)
-        if os.path.isfile(src):
-            dst = f"treemoco_probe_{name}" if name in GENERIC_NAMES else name
-            shutil.copy2(src, os.path.join(dst_dir, dst))
+    mirror_dir(src_dir, dst_dir, prefix="treemoco_probe_", generic_names=GENERIC_NAMES)
 
 
 def latest_artifact(base: str) -> str:
@@ -276,17 +261,6 @@ def run_finetune(trees, y, class_names, state, aug, d_in, ckpt_prefix,
     return cv, {"proba": oof_proba, "y": y, "fold": oof_fold}
 
 
-def _write_rows(writer, rep: str, mode: str, cv, chance: float) -> None:
-    params = json.dumps(cv.best_params, sort_keys=True, default=str)
-    hits = ";".join(boundary_hits(cv.best_params))
-    for metric_name, vals in cv.metrics.items():
-        row = [rep, mode, metric_name, float(np.mean(vals)), float(np.std(vals)),
-               cv.n_samples, cv.n_features, cv.n_classes, json.dumps(vals)]
-        row.append((float(np.mean(vals)) - chance) / (1.0 - chance)
-                   if metric_name == "balanced_accuracy" else "")
-        writer.writerow(row + [params, hits])
-
-
 def _write_desc(out_dir: str, cfg: dict, stats: dict) -> None:
     lines = [f"TreeMoCo probe: {cfg['mode']} mode on the {cfg['source']} cohort, from a joint "
              "excitatory+inhibitory pretraining artifact.", ""]
@@ -397,7 +371,7 @@ def main(args):
                                log=lambda m: _log(fh, m))
         oof["specimen_ids"] = [cohort.cells[i].specimen_id for i in rows]
 
-    _write_rows(writer, REP_NAME, args.mode, cv, chance)
+    write_rows(writer, REP_NAME, args.mode, cv, chance)
     csv_fh.flush()
     ba = float(np.mean(cv.metrics["balanced_accuracy"]))
     _log(fh, f"{args.mode}: balanced_accuracy = {ba:.4f} (chance {chance:.4f}, "

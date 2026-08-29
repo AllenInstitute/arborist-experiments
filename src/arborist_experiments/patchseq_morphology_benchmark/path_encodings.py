@@ -38,6 +38,11 @@ from arborist_experiments.patchseq_morphology_benchmark.features import _run_job
 from arborist_experiments.patchseq_morphology_benchmark.radial_arbor_features import (
     STRUCTURE_GROUPINGS, _real_edges,
 )
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_file,
+    next_version_dir as _next_version_dir,
+)
 
 
 GROUP_NAMES = ["axon", "dendrite"]
@@ -271,21 +276,7 @@ def _append(f: h5py.File, name: str, values) -> None:
 
 
 def _mirror_file(src: str, dst_dir: str) -> None:
-    """Copy one file into the flat results dir, prefixing the generic names.
-
-    results/ is shared with the benchmark and probe runs, which write their own desc.txt /
-    run_log.txt / run_config.json; an unprefixed copy silently overwrites theirs. Written via
-    a .partial rename so a mirror interrupted mid-copy never leaves a truncated file behind.
-    """
-    os.makedirs(dst_dir, exist_ok=True)
-    name = os.path.basename(src)
-    if name in GENERIC_NAMES:
-        name = f"path_encodings_{name}"
-    tmp = os.path.join(dst_dir, name + ".partial")
-    with open(src, "rb") as fsrc, open(tmp, "wb") as fdst:
-        while chunk := fsrc.read(8 << 20):
-            fdst.write(chunk)
-    os.replace(tmp, os.path.join(dst_dir, name))
+    mirror_file(src, dst_dir, prefix="path_encodings_", generic_names=GENERIC_NAMES)
 
 
 def _write_desc(out_dir: str, cfg: dict, stats: dict) -> None:
@@ -299,21 +290,6 @@ def _write_desc(out_dir: str, cfg: dict, stats: dict) -> None:
 
 
 # --- Driver ---
-def _log(fh, msg: str) -> None:
-    line = f"[{time.strftime('%H:%M:%S')}] {msg}"
-    print(line, flush=True)
-    fh.write(line + "\n")
-    fh.flush()
-
-
-def _next_version_dir(base: str) -> str:
-    os.makedirs(base, exist_ok=True)
-    used = {int(d[1:]) for d in os.listdir(base) if d.startswith("v") and d[1:].isdigit()}
-    out = os.path.join(base, f"v{max(used, default=0) + 1}")
-    os.makedirs(out)
-    return out
-
-
 def build_input_cohort(met_path: str, swc_path: str, min_class_size: int,
                        all_cells: bool) -> Cohort:
     if not all_cells:

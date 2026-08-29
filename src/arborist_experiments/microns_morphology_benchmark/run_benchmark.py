@@ -21,13 +21,12 @@ import argparse
 import csv
 import json
 import os
-import shutil
 import time
 
 import numpy as np
 
 from arborist_experiments.morphology_cv import persistence
-from arborist_experiments.morphology_cv.classifier import GRID, boundary_hits, run_cv
+from arborist_experiments.morphology_cv.classifier import GRID, run_cv
 from arborist_experiments.patchseq_morphology_benchmark.gaussian_baseline import run_gaussian_cv
 from arborist_experiments.cells.plots import (
     plot_confusion, plot_embedding,
@@ -46,6 +45,12 @@ from .features import (
 from .inh_constants import apply_inh_constants
 from .modality import MODALITY_TYPES, UNAVAILABLE, check_modality, patchseq_modality_types
 from .radial_arbor_features import extract_radial_arbors
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_dir,
+    next_version_dir as _next_version_dir,
+    write_rows,
+)
 
 
 # Per-source defaults. `--cache`/`--labels` override, so a smoke cache can be pointed at.
@@ -70,39 +75,14 @@ EXTRACTORS = {
 }
 
 
-def _log(fh, msg: str) -> None:
-    line = f"[{time.strftime('%H:%M:%S')}] {msg}"
-    print(line, flush=True)
-    fh.write(line + "\n")
-    fh.flush()
-
-
 def _align_features_and_labels(fr, cohort):
     id_to_label = {c.specimen_id: int(l) for c, l in zip(cohort.cells, cohort.labels)}
     y = np.array([id_to_label[sid] for sid in fr.specimen_ids], dtype=np.int64)
     return fr.X, y
 
 
-def _next_version_dir(base: str) -> str:
-    os.makedirs(base, exist_ok=True)
-    used = {int(d[1:]) for d in os.listdir(base) if d.startswith("v") and d[1:].isdigit()}
-    out = os.path.join(base, f"v{max(used, default=0) + 1}")
-    os.makedirs(out)
-    return out
-
-
 def _mirror(src_dir: str, dst_dir: str) -> None:
-    """Copy the version dir into the flat results dir, prefixing generic names.
-
-    results/ is shared with other pipelines that write desc.txt / run_log.txt / run_config.json,
-    and an unprefixed copy silently overwrites theirs.
-    """
-    os.makedirs(dst_dir, exist_ok=True)
-    for name in sorted(os.listdir(src_dir)):
-        src = os.path.join(src_dir, name)
-        if os.path.isfile(src):
-            dst = f"benchmark_{name}" if name in GENERIC_NAMES else name
-            shutil.copy2(src, os.path.join(dst_dir, dst))
+    mirror_dir(src_dir, dst_dir, prefix="benchmark_", generic_names=GENERIC_NAMES)
 
 
 def _write_run_config(out_dir: str, extra: dict) -> None:
@@ -117,24 +97,6 @@ def _write_run_config(out_dir: str, extra: dict) -> None:
     cfg.update(extra)
     with open(os.path.join(out_dir, "run_config.json"), "w") as f:
         json.dump(cfg, f, indent=2, sort_keys=True, default=str)
-
-
-def _write_rows(writer, csv_fh, rep: str, mod: str, cv, chance: float) -> None:
-    # best_params and grid_boundary repeat down the five metric rows so that any one row is
-    # self-describing; they used to reach disk only as an f-stringed dict in the run log.
-    params = json.dumps(cv.best_params, sort_keys=True, default=str)
-    hits = ";".join(boundary_hits(cv.best_params))
-    for metric_name, vals in cv.metrics.items():
-        row = [rep, mod, metric_name, float(np.mean(vals)), float(np.std(vals)),
-               cv.n_samples, cv.n_features, cv.n_classes, json.dumps(vals)]
-        if metric_name == "balanced_accuracy":
-            # Chance-corrected, because 8 classes here vs 13 on Patch-seq means raw balanced
-            # accuracy is not comparable across the two datasets.
-            row.append((float(np.mean(vals)) - chance) / (1.0 - chance))
-        else:
-            row.append("")
-        writer.writerow(row + [params, hits])
-    csv_fh.flush()
 
 
 def _write_desc(out_dir, cohort, rep_list, mod_list, outer_k, inner_k, args, n_classes) -> None:
@@ -349,7 +311,7 @@ def main(args):
                     if cv is None:
                         _log(fh, "  too few cells or degenerate labels, skipping.")
                         continue
-                    _write_rows(writer, csv_fh, rep, mod, cv, chance)
+                    write_rows(writer, rep, mod, cv, chance=chance, csv_fh=csv_fh)
                     # No per-fold matrix and no OOF here: run_gaussian_cv is the untouched
                     # Patch-seq function and returns a plain CVResult.
                     persistence.write_confusion(
@@ -400,7 +362,7 @@ def main(args):
                          f"(chance {chance:.4f})")
                 _log(fh, f"  best_params = {cv.best_params}")
 
-                _write_rows(writer, csv_fh, rep, mod, cv, chance)
+                write_rows(writer, rep, mod, cv, chance=chance, csv_fh=csv_fh)
 
                 stem = f"{rep}_{mod}"
                 persistence.write_oof(os.path.join(out_dir, f"oof_{stem}.npz"),

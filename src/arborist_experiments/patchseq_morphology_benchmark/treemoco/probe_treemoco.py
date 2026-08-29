@@ -24,7 +24,6 @@ import argparse
 import csv
 import json
 import os
-import shutil
 import time
 
 import numpy as np
@@ -42,13 +41,18 @@ from arborist_experiments.morphology_cv.classifier import CVResult, run_cv
 from ..data_loading import Cohort, build_cohort, load_precomputed_morphometrics
 from arborist_experiments.cells.plots import plot_confusion, plot_embedding
 from ..probe_path_encodings import load_pooled
-from ..run_benchmark import _log, _next_version_dir, _write_rows
-from .augment import PRESETS, AugmentConfig, augment, identity_view
-from .batching import collate
-from .model import TreeClassifier, TreeEncoder
-from .pretrain import PretrainConfig, embed, pretrain
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_dir,
+    next_version_dir as _next_version_dir,
+    write_rows,
+)
+from arborist_experiments.treemoco.augment import PRESETS, AugmentConfig, augment, identity_view
+from arborist_experiments.treemoco.batching import collate
+from arborist_experiments.treemoco.model import TreeClassifier, TreeEncoder
+from arborist_experiments.treemoco.pretrain import PretrainConfig, embed, pretrain
 from .pretrain_treemoco import collapse_cohort
-from .tree_features import N_FEATURES, N_FEATURES_TYPED, CollapsedTree
+from arborist_experiments.treemoco.tree_features import N_FEATURES, N_FEATURES_TYPED, CollapsedTree
 
 
 REP_NAME = "treemoco"
@@ -66,13 +70,8 @@ def modality_columns(names: list[str], modality: str) -> np.ndarray:
 
 def _mirror_probe(src_dir: str, dst_dir: str) -> None:
     """Mirror into the flat results dir, prefixing the generic filenames so nothing is clobbered."""
-    os.makedirs(dst_dir, exist_ok=True)
-    for name in sorted(os.listdir(src_dir)):
-        src = os.path.join(src_dir, name)
-        if not os.path.isfile(src):
-            continue
-        dst_name = f"{REP_NAME}_probe_{name}" if name in GENERIC_NAMES else name
-        shutil.copy2(src, os.path.join(dst_dir, dst_name))
+    mirror_dir(src_dir, dst_dir, prefix=f"{REP_NAME}_probe_",
+               generic_names=GENERIC_NAMES)
 
 
 def outer_folds(y: np.ndarray, outer_k: int, seed: int) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -383,7 +382,7 @@ def main(args):
             summary[mod] = {k: (float(np.mean(v)), float(np.std(v)))
                             for k, v in cv.metrics.items()}
 
-            _write_rows(writer, csv_fh, rep, mod, cv)
+            write_rows(writer, rep, mod, cv, csv_fh=csv_fh)
             stem = f"{rep}_{mod}"
             plot_confusion(cv.confusion, cv.class_names,
                            os.path.join(out_dir, f"confusion_{stem}.png"),

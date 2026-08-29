@@ -1,6 +1,6 @@
 """Driver: contrastively pretrain TreeMoCo on both MICrONS cohorts jointly, dump root embeddings.
 
-The library modules under patchseq_morphology_benchmark.treemoco (tree_features, augment, batching,
+The library modules under arborist_experiments.treemoco (tree_features, augment, batching,
 model, pretrain) are imported unchanged -- they take a `Cell` and know nothing about which cohort it
 came from. Only the orchestration is rewritten, because three things differ here:
 
@@ -53,48 +53,30 @@ import h5py
 import numpy as np
 import torch
 
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.augment import PRESETS
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.model import TreeEncoder
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.pretrain import (
+from arborist_experiments.treemoco.augment import PRESETS
+from arborist_experiments.treemoco.model import TreeEncoder
+from arborist_experiments.treemoco.pretrain import (
     PretrainConfig, embed, pretrain,
 )
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.tree_features import (
+from arborist_experiments.treemoco.tree_features import (
     collapse, n_features,
 )
 
 from .data_loading import CACHE_PATH, INH_CACHE_PATH, cell_from_cache, load_cache
 from .features import _run_jobs
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_file,
+    next_version_dir as _next_version_dir,
+)
 
 
 SOURCE_CACHES = {"exc": CACHE_PATH, "inh": INH_CACHE_PATH}
 _STR = h5py.string_dtype()
 
 
-def _log(fh, msg: str) -> None:
-    line = f"[{time.strftime('%H:%M:%S')}] {msg}"
-    print(line, flush=True)
-    fh.write(line + "\n")
-    fh.flush()
-
-
-def _next_version_dir(base: str) -> str:
-    os.makedirs(base, exist_ok=True)
-    used = {int(d[1:]) for d in os.listdir(base) if d.startswith("v") and d[1:].isdigit()}
-    out = os.path.join(base, f"v{max(used, default=0) + 1}")
-    os.makedirs(out)
-    return out
-
-
 def _mirror_file(src: str, dst_dir: str) -> None:
-    os.makedirs(dst_dir, exist_ok=True)
-    name = os.path.basename(src)
-    if name in GENERIC_NAMES:
-        name = f"microns_treemoco_pretrain_{name}"
-    tmp = os.path.join(dst_dir, name + ".partial")
-    with open(src, "rb") as fsrc, open(tmp, "wb") as fdst:
-        while chunk := fsrc.read(8 << 20):
-            fdst.write(chunk)
-    os.replace(tmp, os.path.join(dst_dir, name))
+    mirror_file(src, dst_dir, prefix="microns_treemoco_pretrain_", generic_names=GENERIC_NAMES)
 
 
 def _job_collapse(cell):

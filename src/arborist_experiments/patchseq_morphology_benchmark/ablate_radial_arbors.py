@@ -20,7 +20,6 @@ import argparse
 import csv
 import json
 import os
-import shutil
 import time
 
 import numpy as np
@@ -30,8 +29,11 @@ from arborist_experiments.morphology_cv.classifier import run_cv
 from arborist_experiments.patchseq_morphology_benchmark.data_loading import build_cohort
 from arborist_experiments.cells.plots import plot_confusion, plot_embedding
 from arborist_experiments.patchseq_morphology_benchmark.radial_arbor_features import extract_radial_arbors
-from arborist_experiments.patchseq_morphology_benchmark.run_benchmark import (
-    _log, _next_version_dir, _write_rows,
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_dir,
+    next_version_dir as _next_version_dir,
+    write_rows,
 )
 
 
@@ -43,12 +45,7 @@ BLOCKS = {
 
 
 def _mirror_ablation(src_dir: str, dst_dir: str) -> None:
-    os.makedirs(dst_dir, exist_ok=True)
-    for name in sorted(os.listdir(src_dir)):
-        src = os.path.join(src_dir, name)
-        if os.path.isfile(src):
-            dst = f"{PREFIX}_{name}" if name in GENERIC_NAMES else name
-            shutil.copy2(src, os.path.join(dst_dir, dst))
+    mirror_dir(src_dir, dst_dir, prefix=f"{PREFIX}_", generic_names=GENERIC_NAMES)
 
 
 def _write_desc(out_dir: str, cohort, n_cells_by_mod: dict, summary: dict) -> None:
@@ -124,7 +121,7 @@ def main(args):
                                          float(np.std(cv.metrics["balanced_accuracy"])),
                                          int(X.shape[1]))
 
-                _write_rows(writer, csv_fh, block, mod, cv)
+                write_rows(writer, block, mod, cv, csv_fh=csv_fh)
                 stem = f"{block}_{mod}"
                 plot_confusion(cv.confusion, class_names,
                                os.path.join(out_dir, f"confusion_{stem}.png"),

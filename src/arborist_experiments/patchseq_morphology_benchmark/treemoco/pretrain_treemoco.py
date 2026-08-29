@@ -24,41 +24,23 @@ import torch
 from ..data_loading import Cohort, build_cohort
 from ..features import _run_jobs
 from ..modality import filter_cell
-from .augment import PRESETS
-from .model import TreeEncoder
-from .pretrain import PretrainConfig, embed, pretrain
-from .tree_features import collapse, n_features
+from arborist_experiments.treemoco.augment import PRESETS
+from arborist_experiments.treemoco.model import TreeEncoder
+from arborist_experiments.treemoco.pretrain import PretrainConfig, embed, pretrain
+from arborist_experiments.treemoco.tree_features import collapse, n_features
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_file,
+    next_version_dir as _next_version_dir,
+)
 
 
 MODALITIES = ("full", "axon", "dendrite")
 _STR = h5py.string_dtype()
 
 
-def _log(fh, msg: str) -> None:
-    line = f"[{time.strftime('%H:%M:%S')}] {msg}"
-    print(line, flush=True)
-    fh.write(line + "\n")
-    fh.flush()
-
-
-def _next_version_dir(base: str) -> str:
-    os.makedirs(base, exist_ok=True)
-    used = {int(d[1:]) for d in os.listdir(base) if d.startswith("v") and d[1:].isdigit()}
-    out = os.path.join(base, f"v{max(used, default=0) + 1}")
-    os.makedirs(out)
-    return out
-
-
 def _mirror_file(src: str, dst_dir: str) -> None:
-    os.makedirs(dst_dir, exist_ok=True)
-    name = os.path.basename(src)
-    if name in GENERIC_NAMES:
-        name = f"treemoco_pretrain_{name}"
-    tmp = os.path.join(dst_dir, name + ".partial")
-    with open(src, "rb") as fsrc, open(tmp, "wb") as fdst:
-        while chunk := fsrc.read(8 << 20):
-            fdst.write(chunk)
-    os.replace(tmp, os.path.join(dst_dir, name))
+    mirror_file(src, dst_dir, prefix="treemoco_pretrain_", generic_names=GENERIC_NAMES)
 
 
 def _job_collapse(cell, modality: str):

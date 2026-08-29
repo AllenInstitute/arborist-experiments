@@ -16,7 +16,6 @@ import argparse
 import csv
 import json
 import os
-import shutil
 import time
 from collections import defaultdict
 
@@ -32,10 +31,16 @@ from arborist_experiments.patchseq_morphology_benchmark.features import (
     extract_persistence_image, extract_sholl, extract_morphometrics,
     extract_precomputed_morphometrics,
 )
-from arborist_experiments.morphology_cv.classifier import boundary_hits, run_cv
+from arborist_experiments.morphology_cv.classifier import run_cv
 from arborist_experiments.patchseq_morphology_benchmark.gaussian_baseline import run_gaussian_cv
 from arborist_experiments.patchseq_morphology_benchmark.radial_arbor_features import extract_radial_arbors
 from arborist_experiments.cells.plots import plot_confusion, plot_embedding
+from arborist_experiments.experiment_harness import (
+    log as _log,
+    mirror_dir,
+    next_version_dir as _next_version_dir,
+    write_rows,
+)
 
 
 EXTRACTORS = {
@@ -49,14 +54,6 @@ EXTRACTORS = {
     "gaussian_arbor":           ("generative", run_gaussian_cv),
     "radial_arbors":            ("morph", extract_radial_arbors),
 }
-
-
-def _log(fh, msg: str) -> None:
-    stamp = time.strftime("%H:%M:%S")
-    line = f"[{stamp}] {msg}"
-    print(line, flush=True)
-    fh.write(line + "\n")
-    fh.flush()
 
 
 def _sanity_prints(cohort, fh) -> None:
@@ -96,27 +93,8 @@ def _align_features_and_labels(fr, cohort):
     return fr.X, y
 
 
-def _next_version_dir(base: str) -> str:
-    os.makedirs(base, exist_ok=True)
-    used = {int(d[1:]) for d in os.listdir(base) if d.startswith("v") and d[1:].isdigit()}
-    out = os.path.join(base, f"v{max(used, default=0) + 1}")
-    os.makedirs(out)
-    return out
-
-
 def _mirror(src_dir: str, dst_dir: str) -> None:
-    """Copy the version dir into the flat results dir.
-
-    desc.txt / run_log.txt / run_config.json are prefixed on the way out: results/ is shared
-    with other pipelines that write those same names, and an unprefixed copy silently
-    overwrites theirs. The version dir keeps the plain names the versioning convention wants.
-    """
-    os.makedirs(dst_dir, exist_ok=True)
-    for name in sorted(os.listdir(src_dir)):
-        src = os.path.join(src_dir, name)
-        if os.path.isfile(src):
-            dst = f"benchmark_{name}" if name in GENERIC_NAMES else name
-            shutil.copy2(src, os.path.join(dst_dir, dst))
+    mirror_dir(src_dir, dst_dir, prefix="benchmark_", generic_names=GENERIC_NAMES)
 
 
 def _write_run_config(out_dir: str, extra: dict) -> None:
@@ -129,21 +107,6 @@ def _write_run_config(out_dir: str, extra: dict) -> None:
     cfg.update(extra)
     with open(os.path.join(out_dir, "run_config.json"), "w") as f:
         json.dump(cfg, f, indent=2, sort_keys=True)
-
-
-def _write_rows(writer, csv_fh, rep: str, mod: str, cv) -> None:
-    # best_params and grid_boundary repeat down the five metric rows so that any one row is
-    # self-describing; they used to reach disk only as an f-stringed dict in the run log.
-    params = json.dumps(cv.best_params, sort_keys=True, default=str)
-    hits = ";".join(boundary_hits(cv.best_params))
-    for metric_name, vals in cv.metrics.items():
-        writer.writerow([
-            rep, mod, metric_name,
-            float(np.mean(vals)), float(np.std(vals)),
-            cv.n_samples, cv.n_classes, json.dumps(vals),
-            params, hits,
-        ])
-    csv_fh.flush()
 
 
 def _write_desc(out_dir: str, cohort, rep_list, mod_list, outer_k, inner_k, smoke,
@@ -284,7 +247,7 @@ def main(args):
                         _log(fh, "  too few cells or degenerate labels, skipping.")
                         continue
                     _log(fh, f"  temperatures: {[p['temperature'] for p in cv.best_params]}")
-                    _write_rows(writer, csv_fh, rep_label, mod, cv)
+                    write_rows(writer, rep_label, mod, cv, csv_fh=csv_fh)
                     # No per-fold matrix and no OOF here: run_gaussian_cv builds its CVResult by
                     # hand and only has the aggregate.
                     persistence.write_confusion(
@@ -332,7 +295,7 @@ def main(args):
                          f"{np.mean(cv.metrics['balanced_accuracy']):.4f}")
                 _log(fh, f"  best_params = {cv.best_params}")
 
-                _write_rows(writer, csv_fh, rep_label, mod, cv)
+                write_rows(writer, rep_label, mod, cv, csv_fh=csv_fh)
 
                 stem = f"{rep_label}_{mod}"
                 persistence.write_oof(os.path.join(out_dir, f"oof_{stem}.npz"),

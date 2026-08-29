@@ -27,7 +27,7 @@ from arborist_experiments.microns_morphology_benchmark.pretrain_treemoco_microns
 from arborist_experiments.microns_morphology_benchmark.probe_treemoco_microns import (
     KEY_PREFIX, align_to_cohort,
 )
-from arborist_experiments.patchseq_morphology_benchmark.treemoco.tree_features import (
+from arborist_experiments.treemoco.tree_features import (
     N_FEATURES, N_FEATURES_TYPED, collapse, n_features, node_features,
 )
 
