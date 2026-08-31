@@ -55,8 +55,7 @@ from arborist_experiments.treemoco.tree_features import (
 )
 
 from .data_loading import build_cohort_from_source, class_counts, subsample_per_class
-from .features import _run_jobs
-from .inh_constants import apply_inh_constants
+from arborist_experiments.utils.cells import run_jobs
 from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
     log as _log,
@@ -120,7 +119,7 @@ def _job_collapse(cell):
 def collapse_cohort(cohort, log=print) -> tuple[list, np.ndarray]:
     """Collapsed whole-cell trees and the cohort row index of each. No modality filter."""
     t0 = time.time()
-    results = _run_jobs(SimpleNamespace(cells=cohort.cells), _job_collapse)
+    results = run_jobs(SimpleNamespace(cells=cohort.cells), _job_collapse)
     trees, rows, skipped = [], [], []
     for i, (sid, tree, err) in enumerate(results):
         if err is not None:
@@ -293,9 +292,6 @@ def main(args):
     os.makedirs(out_dir, exist_ok=True)
     fh = open(os.path.join(out_dir, "run_log.txt"), "w")
     _log(fh, f"Durable output dir: {out_dir} (mirrored to {RESULTS_DIR})")
-
-    if args.source == "microns_inh":
-        apply_inh_constants(log=lambda m: _log(fh, m))
 
     artifact = args.artifact or latest_artifact(PRETRAIN_DIR)
     row_by_key, X_all, attrs = load_artifact(artifact)

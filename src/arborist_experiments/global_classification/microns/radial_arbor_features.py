@@ -35,8 +35,9 @@ from __future__ import annotations
 
 import numpy as np
 
+from arborist_experiments.utils.cells import run_jobs
 from .data_loading import Cell, Cohort, TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL
-from .features import FeatureResult, _run_jobs
+from .features import FeatureResult
 
 
 STRUCTURE_GROUPINGS = {
@@ -170,7 +171,7 @@ def extract_radial_arbors(cohort: Cohort, modality: str) -> FeatureResult:
     names = feature_names(modality)
     rows: list[tuple[str, np.ndarray]] = []
     skipped: list[tuple[str, str]] = []
-    for sid, v, _names, err in _run_jobs(cohort, _job_radial_arbors, modality):
+    for sid, v, _names, err in run_jobs(cohort, _job_radial_arbors, modality):
         if err is not None:
             skipped.append((sid, err)); continue
         rows.append((sid, v))

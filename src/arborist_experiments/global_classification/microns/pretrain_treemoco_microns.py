@@ -63,7 +63,7 @@ from arborist_experiments.treemoco.tree_features import (
 )
 
 from .data_loading import CACHE_PATH, INH_CACHE_PATH, cell_from_cache, load_cache
-from .features import _run_jobs
+from arborist_experiments.utils.cells import run_jobs
 from arborist_experiments.utils.runs import (
     log as _log,
     mirror_file,
@@ -101,7 +101,7 @@ def build_corpus(limit: int | None = None, log=print) -> tuple[list, list[str], 
         n = len(cache.specimens) if limit is None else min(limit, len(cache.specimens))
         cells = [cell_from_cache(cache, row) for row in range(n)]
         t0 = time.time()
-        results = _run_jobs(SimpleNamespace(cells=cells), _job_collapse)
+        results = run_jobs(SimpleNamespace(cells=cells), _job_collapse)
         n_ok = 0
         for sid, tree, err in results:
             if err is not None:

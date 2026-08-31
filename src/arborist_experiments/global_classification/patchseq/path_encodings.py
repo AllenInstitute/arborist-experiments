@@ -34,7 +34,7 @@ from arborist.models.curve_transformer import CurveAutoencoder
 from arborist_experiments.global_classification.patchseq.data_loading import (
     Cohort, TYPE_SOMA, _iter_swc, build_cohort,
 )
-from arborist_experiments.global_classification.patchseq.features import _run_jobs
+from arborist_experiments.utils.cells import run_jobs
 from arborist_experiments.global_classification.patchseq.radial_arbor_features import (
     STRUCTURE_GROUPINGS, _real_edges,
 )
@@ -355,7 +355,7 @@ def main(args):
         chunk = cells[start:start + CHUNK_SIZE]
         sub = Cohort(cells=chunk, labels=np.zeros(len(chunk), dtype=np.int64),
                      label_names=cohort.label_names)
-        results = _run_jobs(sub, _job_paths, NODE_SPACING, segment_len, args.min_points)
+        results = run_jobs(sub, _job_paths, NODE_SPACING, segment_len, args.min_points)
 
         curves, sids, groups, lengths, n_points, n_padded = [], [], [], [], [], []
         spans = []

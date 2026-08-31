@@ -28,6 +28,7 @@ import numpy as np
 from arborist_experiments.global_classification.cv import persistence
 from arborist_experiments.global_classification.cv.classifier import GRID, run_cv
 from arborist_experiments.global_classification.patchseq.gaussian_baseline import run_gaussian_cv
+from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import (
     plot_confusion, plot_embedding,
 )
@@ -198,7 +199,7 @@ def main(args):
     fh = open(os.path.join(out_dir, "run_log.txt"), "w")
     _log(fh, f"Durable output dir: {out_dir} (mirrored to {RESULTS_DIR})")
     _log(fh, f"Source: {args.source}  cache: {args.cache}")
-    _log(fh, f"Cores: {os.cpu_count()}  extract workers: {features.N_WORKERS}  "
+    _log(fh, f"Cores: {os.cpu_count()}  extract workers: {N_WORKERS}  "
              f"solver: {args.solver}/{args.dtype}")
 
     # Before any cohort is built and long before the first process pool is forked: the workers

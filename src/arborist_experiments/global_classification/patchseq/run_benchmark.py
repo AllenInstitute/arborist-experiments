@@ -22,7 +22,6 @@ from collections import defaultdict
 import numpy as np
 
 from arborist_experiments.global_classification.cv import classifier, persistence
-from arborist_experiments.global_classification.patchseq import features
 from arborist_experiments.global_classification.patchseq.data_loading import (
     Cohort, build_cohort, load_precomputed_morphometrics,
 )
@@ -34,6 +33,7 @@ from arborist_experiments.global_classification.patchseq.features import (
 from arborist_experiments.global_classification.cv.classifier import run_cv
 from arborist_experiments.global_classification.patchseq.gaussian_baseline import run_gaussian_cv
 from arborist_experiments.global_classification.patchseq.radial_arbor_features import extract_radial_arbors
+from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
 from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
@@ -170,7 +170,7 @@ def main(args):
 
     fh = open(os.path.join(out_dir, "run_log.txt"), "w")
     _log(fh, f"Durable output dir: {out_dir} (mirrored to {RESULTS_DIR})")
-    _log(fh, f"Cores: {os.cpu_count()}  extract workers: {features.N_WORKERS}  cv jobs: {classifier.N_JOBS}")
+    _log(fh, f"Cores: {os.cpu_count()}  extract workers: {N_WORKERS}  cv jobs: {classifier.N_JOBS}")
 
     _log(fh, "Building cohort...")
     cohort = build_cohort(

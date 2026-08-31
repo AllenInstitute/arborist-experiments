@@ -80,8 +80,7 @@ def _empty_safe_reductions():
     finally:
         feature_presentation.np = original
 
-# N_WORKERS is re-exported, not used here: the drivers log `features.N_WORKERS`.
-from arborist_experiments.utils.cells import N_WORKERS, run_jobs
+from arborist_experiments.utils.cells import run_jobs
 from .data_loading import Cell, Cohort, load_precomputed_morphometrics
 from .modality import filter_cell
 from .swc_adapter import cell_to_neurontree
@@ -129,10 +128,6 @@ def _build_nt(cell: Cell, modality: str):
         return cell_to_neurontree(sub), None
     except Exception as e:
         return None, f"neurontree build: {type(e).__name__}: {e}"
-
-
-# Re-exported under the private name the sibling modules and drivers already import.
-_run_jobs = run_jobs
 
 
 def _job_density(cell: Cell, modality: str, axis: str):
@@ -223,7 +218,7 @@ def _collect_fixed_width(results, label: str, name_fn) -> FeatureResult:
 
 
 def extract_density(cohort: Cohort, modality: str, axis: str) -> FeatureResult:
-    results = _run_jobs(cohort, _job_density, modality, axis)
+    results = run_jobs(cohort, _job_density, modality, axis)
     return _collect_fixed_width(
         results, f"density_{axis}", lambda n: [f"density_{axis}_{i}" for i in range(n)]
     )
@@ -242,14 +237,14 @@ def extract_density_yz(cohort, modality):
 
 
 def extract_persistence_image(cohort: Cohort, modality: str) -> FeatureResult:
-    results = _run_jobs(cohort, _job_persistence, modality)
+    results = run_jobs(cohort, _job_persistence, modality)
     return _collect_fixed_width(
         results, "persistence", lambda n: [f"persim_{i}" for i in range(n)]
     )
 
 
 def extract_sholl(cohort: Cohort, modality: str) -> FeatureResult:
-    results = _run_jobs(cohort, _job_sholl, modality)
+    results = run_jobs(cohort, _job_sholl, modality)
     return _collect_fixed_width(
         results, "sholl", lambda n: [f"sholl_r{int(r)}" for r in SHOLL_RADII]
     )
@@ -259,7 +254,7 @@ def extract_morphometrics(cohort: Cohort, modality: str) -> FeatureResult:
     rows: list[tuple[str, np.ndarray]] = []
     skipped: list[tuple[str, str]] = []
     names: Optional[list[str]] = None
-    for sid, v, local_names, err in _run_jobs(cohort, _job_morphometrics, modality):
+    for sid, v, local_names, err in run_jobs(cohort, _job_morphometrics, modality):
         if err is not None:
             skipped.append((sid, err)); continue
         if names is None:

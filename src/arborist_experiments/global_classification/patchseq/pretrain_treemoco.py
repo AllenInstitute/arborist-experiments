@@ -21,8 +21,8 @@ import h5py
 import numpy as np
 import torch
 
+from arborist_experiments.utils.cells import run_jobs
 from .data_loading import Cohort, build_cohort
-from .features import _run_jobs
 from .modality import filter_cell
 from arborist_experiments.treemoco.augment import PRESETS
 from arborist_experiments.treemoco.model import TreeEncoder
@@ -55,7 +55,7 @@ def _job_collapse(cell, modality: str):
 
 def collapse_cohort(cohort: Cohort, modality: str) -> tuple[list, np.ndarray, list[str]]:
     """Collapsed trees for one modality, the cohort row index of each, and the skip reasons."""
-    results = _run_jobs(cohort, _job_collapse, modality)
+    results = run_jobs(cohort, _job_collapse, modality)
     trees, rows, skipped = [], [], []
     for i, (sid, tree, err) in enumerate(results):
         if err is not None:

@@ -22,9 +22,9 @@ import h5py
 import numpy as np
 
 from arborist_experiments.global_classification.cv import classifier
-from arborist_experiments.global_classification.patchseq import features
 from arborist_experiments.global_classification.cv.classifier import run_cv
 from arborist_experiments.global_classification.patchseq.data_loading import build_cohort
+from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
 from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
@@ -85,7 +85,7 @@ def main(args):
     os.makedirs(RESULTS_DIR, exist_ok=True)
     fh = open(os.path.join(out_dir, "run_log.txt"), "w")
     _log(fh, f"Durable output dir: {out_dir} (mirrored to {RESULTS_DIR})")
-    _log(fh, f"Cores: {os.cpu_count()}  extract workers: {features.N_WORKERS}  "
+    _log(fh, f"Cores: {os.cpu_count()}  extract workers: {N_WORKERS}  "
              f"cv jobs: {classifier.N_JOBS}")
     _log(fh, f"Artifact: {args.artifact}")
 
