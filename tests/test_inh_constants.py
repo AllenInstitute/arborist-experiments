@@ -15,7 +15,7 @@ import sys
 import numpy as np
 import pytest
 
-from arborist_experiments.microns_morphology_benchmark import inh_constants
+from arborist_experiments.global_classification.microns import inh_constants
 
 
 def test_exc_constants_are_intact_on_a_fresh_import():
@@ -25,7 +25,7 @@ def test_exc_constants_are_intact_on_a_fresh_import():
 def test_activation_is_not_an_import_side_effect():
     """A fresh interpreter that imports everything must still pass the exc assertion."""
     code = (
-        "from arborist_experiments.microns_morphology_benchmark import "
+        "from arborist_experiments.global_classification.microns import "
         "run_benchmark, features, radial_arbor_features, inh_constants, data_loading;"
         "inh_constants.assert_exc_constants();print('ok')"
     )
@@ -38,7 +38,7 @@ def test_apply_inh_constants_rebinds_everything_the_features_read():
     """Run in a subprocess: the rebind is global and would leak into the other tests."""
     code = (
         "import numpy as np;"
-        "from arborist_experiments.microns_morphology_benchmark import "
+        "from arborist_experiments.global_classification.microns import "
         "features as F, radial_arbor_features as raf, inh_constants as IC;"
         "IC.apply_inh_constants(log=lambda m: None);"
         "assert raf.R_EDGES[-1] == IC.R_EDGES[-1];"
@@ -81,7 +81,7 @@ def test_inh_ranges_contain_every_modality_envelope(modality):
 
 
 def test_bin_edges_are_multiples_of_the_bin_size():
-    from arborist_experiments.microns_morphology_benchmark.derive_constants import BIN_SIZE
+    from arborist_experiments.global_classification.microns.derive_constants import BIN_SIZE
 
     for lo, hi in inh_constants.DENSITY_RANGES.values():
         assert lo % BIN_SIZE == 0 and hi % BIN_SIZE == 0

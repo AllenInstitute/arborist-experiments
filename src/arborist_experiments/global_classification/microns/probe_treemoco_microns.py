@@ -40,9 +40,9 @@ from sklearn.metrics import (
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch.utils.data import DataLoader, Dataset
 
-from arborist_experiments.morphology_cv import persistence
-from arborist_experiments.morphology_cv.classifier import CVResult, run_cv
-from arborist_experiments.cells.plots import plot_confusion
+from arborist_experiments.global_classification.cv import persistence
+from arborist_experiments.global_classification.cv.classifier import CVResult, run_cv
+from arborist_experiments.utils.cells.plots import plot_confusion
 from arborist_experiments.treemoco.augment import (
     PRESETS, AugmentConfig, augment, identity_view,
 )
@@ -57,11 +57,11 @@ from arborist_experiments.treemoco.tree_features import (
 from .data_loading import build_cohort_from_source, class_counts, subsample_per_class
 from .features import _run_jobs
 from .inh_constants import apply_inh_constants
-from arborist_experiments.experiment_harness import (
+from arborist_experiments.global_classification.rows import write_rows
+from arborist_experiments.utils.runs import (
     log as _log,
     mirror_dir,
     next_version_dir as _next_version_dir,
-    write_rows,
 )
 
 

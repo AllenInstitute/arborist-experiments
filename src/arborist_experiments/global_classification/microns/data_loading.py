@@ -28,7 +28,7 @@ import os
 import h5py
 import numpy as np
 
-from arborist_experiments.patchseq_morphology_benchmark.data_loading import (
+from arborist_experiments.global_classification.patchseq.data_loading import (
     Cell, CellGraph, Cohort, TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL,
 )
 

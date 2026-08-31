@@ -1,9 +1,9 @@
 """A single cell as a SkeletonGraph.
 
-Replaces the `Cell` dataclass that used to live in
-`patchseq_morphology_benchmark.data_loading`. Both benchmark packages consume it,
-and every module they would otherwise share was coupled to that dataclass, so the
-type had to move somewhere neutral before anything else could.
+Replaces the `Cell` dataclass that used to live in the Patch-seq benchmark's
+`data_loading`. Both cohorts consume it, as does `treemoco`, and every module they
+would otherwise share was coupled to that dataclass, so the type had to move
+somewhere neutral before anything else could.
 
 `SkeletonGraph` can carry the extra per-node metadata a cell needs because its
 `NODE_ATTR_SPEC` registry lets a subclass declare attributes by extending a dict

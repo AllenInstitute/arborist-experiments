@@ -1,7 +1,8 @@
-"""Cell representation shared by the Patch-seq and MICrONS benchmarks.
+"""The cell representation every other package is written against.
 
 This exists because `Cell` used to live inside one dataset package while both
-benchmarks depended on it, which made every candidate shared module unmovable.
+cohorts and `treemoco` depended on it, which made every candidate shared module
+unmovable.
 """
 
 from .cell_graph import (

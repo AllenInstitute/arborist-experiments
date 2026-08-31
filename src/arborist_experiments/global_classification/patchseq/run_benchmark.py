@@ -21,25 +21,25 @@ from collections import defaultdict
 
 import numpy as np
 
-from arborist_experiments.morphology_cv import classifier, persistence
-from arborist_experiments.patchseq_morphology_benchmark import features
-from arborist_experiments.patchseq_morphology_benchmark.data_loading import (
+from arborist_experiments.global_classification.cv import classifier, persistence
+from arborist_experiments.global_classification.patchseq import features
+from arborist_experiments.global_classification.patchseq.data_loading import (
     Cohort, build_cohort, load_precomputed_morphometrics,
 )
-from arborist_experiments.patchseq_morphology_benchmark.features import (
+from arborist_experiments.global_classification.patchseq.features import (
     extract_density_xy, extract_density_xz, extract_density_yz,
     extract_persistence_image, extract_sholl, extract_morphometrics,
     extract_precomputed_morphometrics,
 )
-from arborist_experiments.morphology_cv.classifier import run_cv
-from arborist_experiments.patchseq_morphology_benchmark.gaussian_baseline import run_gaussian_cv
-from arborist_experiments.patchseq_morphology_benchmark.radial_arbor_features import extract_radial_arbors
-from arborist_experiments.cells.plots import plot_confusion, plot_embedding
-from arborist_experiments.experiment_harness import (
+from arborist_experiments.global_classification.cv.classifier import run_cv
+from arborist_experiments.global_classification.patchseq.gaussian_baseline import run_gaussian_cv
+from arborist_experiments.global_classification.patchseq.radial_arbor_features import extract_radial_arbors
+from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
+from arborist_experiments.global_classification.rows import write_rows
+from arborist_experiments.utils.runs import (
     log as _log,
     mirror_dir,
     next_version_dir as _next_version_dir,
-    write_rows,
 )
 
 
@@ -78,7 +78,7 @@ def _subsample_stratified(cohort, per_class: int, seed: int = 0):
         rng.shuffle(idx)
         keep.extend(idx[:per_class].tolist())
     keep = sorted(keep)
-    from arborist_experiments.patchseq_morphology_benchmark.data_loading import Cohort
+    from arborist_experiments.global_classification.patchseq.data_loading import Cohort
     return Cohort(
         cells=[cohort.cells[i] for i in keep],
         labels=cohort.labels[keep],
@@ -128,7 +128,7 @@ def _write_desc(out_dir: str, cohort, rep_list, mod_list, outer_k, inner_k, smok
     solver_line = ("    multinomial elastic-net logistic regression (saga, max_iter=5000)"
                    if solver == "saga" else
                    f"    multinomial elastic-net logistic regression (GPU FISTA, {dtype});"
-                   " same objective as saga, see morphology_cv.gpu_logreg")
+                   " same objective as saga, see global_classification.cv.gpu_logreg")
     lines += ["* Classifier",
               solver_line,
               "    StandardScaler -> PCA(min(n/2, 200, n_features)) -> LogisticRegression",

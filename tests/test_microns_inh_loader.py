@@ -17,11 +17,11 @@ import os
 import numpy as np
 import pytest
 
-from arborist_experiments.microns_morphology_benchmark.data_loading import (
+from arborist_experiments.global_classification.microns.data_loading import (
     INH_CACHE_PATH, INH_LABELS_PATH, INH_COARSE_CLASSES, TYPE_APICAL, TYPE_AXON, TYPE_BASAL,
     TYPE_SOMA, build_inh_cohort, cell_from_cache, class_counts, load_cache,
 )
-from arborist_experiments.microns_morphology_benchmark.inh_id_map import (
+from arborist_experiments.global_classification.microns.inh_id_map import (
     ACCEPT_UM, MAP_PATH, SWC_DIR, UPRIGHT_PATH, load_map, load_upright, upright_matrix,
 )
 

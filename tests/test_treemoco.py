@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 import torch
 
-from arborist_experiments.patchseq_morphology_benchmark.data_loading import Cell
+from arborist_experiments.global_classification.patchseq.data_loading import Cell
 from arborist_experiments.treemoco import augment as ag
 from arborist_experiments.treemoco import batching as bt
 from arborist_experiments.treemoco import tree_features as tf

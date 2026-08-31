@@ -81,7 +81,7 @@ def _empty_safe_reductions():
         feature_presentation.np = original
 
 # N_WORKERS is re-exported, not used here: the drivers log `features.N_WORKERS`.
-from arborist_experiments.cells import N_WORKERS, run_jobs
+from arborist_experiments.utils.cells import N_WORKERS, run_jobs
 from .data_loading import Cell, Cohort, load_precomputed_morphometrics
 from .modality import filter_cell
 from .swc_adapter import cell_to_neurontree

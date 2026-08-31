@@ -5,7 +5,7 @@ from typing import Optional
 
 import numpy as np
 
-from arborist_experiments.morphology_cv.classifier import boundary_hits
+from arborist_experiments.global_classification.cv.classifier import boundary_hits
 
 
 def write_rows(writer, rep: str, mod: str, cv, chance: Optional[float] = None,

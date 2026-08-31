@@ -64,7 +64,7 @@ from arborist_experiments.treemoco.tree_features import (
 
 from .data_loading import CACHE_PATH, INH_CACHE_PATH, cell_from_cache, load_cache
 from .features import _run_jobs
-from arborist_experiments.experiment_harness import (
+from arborist_experiments.utils.runs import (
     log as _log,
     mirror_file,
     next_version_dir as _next_version_dir,

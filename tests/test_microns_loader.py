@@ -13,8 +13,8 @@ import h5py
 import numpy as np
 import pytest
 
-from arborist_experiments.microns_morphology_benchmark.cache_extract import SOURCE_PATH
-from arborist_experiments.microns_morphology_benchmark.data_loading import (
+from arborist_experiments.global_classification.microns.cache_extract import SOURCE_PATH
+from arborist_experiments.global_classification.microns.data_loading import (
     CACHE_PATH, LABELS_PATH, EXC_COARSE_CLASSES, TYPE_APICAL, TYPE_BASAL, TYPE_SOMA,
     build_cohort, cell_from_cache, class_counts, load_cache, load_labels,
 )

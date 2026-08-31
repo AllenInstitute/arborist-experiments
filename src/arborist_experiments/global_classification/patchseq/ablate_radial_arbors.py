@@ -24,16 +24,16 @@ import time
 
 import numpy as np
 
-from arborist_experiments.morphology_cv import classifier
-from arborist_experiments.morphology_cv.classifier import run_cv
-from arborist_experiments.patchseq_morphology_benchmark.data_loading import build_cohort
-from arborist_experiments.cells.plots import plot_confusion, plot_embedding
-from arborist_experiments.patchseq_morphology_benchmark.radial_arbor_features import extract_radial_arbors
-from arborist_experiments.experiment_harness import (
+from arborist_experiments.global_classification.cv import classifier
+from arborist_experiments.global_classification.cv.classifier import run_cv
+from arborist_experiments.global_classification.patchseq.data_loading import build_cohort
+from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
+from arborist_experiments.global_classification.patchseq.radial_arbor_features import extract_radial_arbors
+from arborist_experiments.global_classification.rows import write_rows
+from arborist_experiments.utils.runs import (
     log as _log,
     mirror_dir,
     next_version_dir as _next_version_dir,
-    write_rows,
 )
 
 

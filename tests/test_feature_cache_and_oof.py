@@ -20,12 +20,12 @@ import numpy as np
 import pytest
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 
-from arborist_experiments.microns_morphology_benchmark import feature_cache
-from arborist_experiments.morphology_cv import persistence
-from arborist_experiments.morphology_cv.classifier import (
+from arborist_experiments.global_classification.microns import feature_cache
+from arborist_experiments.global_classification.cv import persistence
+from arborist_experiments.global_classification.cv.classifier import (
     GRID, CVResult, boundary_hits, run_cv,
 )
-from arborist_experiments.microns_morphology_benchmark.features import FeatureResult
+from arborist_experiments.global_classification.microns.features import FeatureResult
 
 
 def _cohort(ids):
@@ -53,7 +53,7 @@ def test_key_changes_with_membership_radius_and_constants(monkeypatch):
     # real_radius changes feature *values* without changing membership, so it cannot be implied.
     assert feature_cache.cohort_key(a, "em_exc", True) != k
 
-    from arborist_experiments.microns_morphology_benchmark import features as feat
+    from arborist_experiments.global_classification.microns import features as feat
     monkeypatch.setitem(feat.DENSITY_CONFIG, "bin_size", 25)
     assert feature_cache.cohort_key(a, "em_exc", False) != k, "constants must be in the key"
 

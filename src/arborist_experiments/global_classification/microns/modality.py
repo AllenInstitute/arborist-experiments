@@ -21,7 +21,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Optional
 
-from arborist_experiments.patchseq_morphology_benchmark.data_loading import (
+from arborist_experiments.global_classification.patchseq.data_loading import (
     Cell, TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL,
 )
 
@@ -71,7 +71,7 @@ def patchseq_modality_types():
     `dendrite` set is {1,3,4}, identical to ours, so this only *adds* the two missing keys and is
     a no-op for the default modality.
     """
-    import arborist_experiments.patchseq_morphology_benchmark.modality as ps
+    import arborist_experiments.global_classification.patchseq.modality as ps
 
     assert ps.MODALITY_TYPES["dendrite"] == MODALITY_TYPES["dendrite"]
     added = {k: v for k, v in MODALITY_TYPES.items() if k not in ps.MODALITY_TYPES}

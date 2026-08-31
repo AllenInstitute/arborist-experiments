@@ -3,7 +3,7 @@ from typing import Optional
 import h5py
 import numpy as np
 
-from arborist_experiments.cells import (
+from arborist_experiments.utils.cells import (
     CellGraph,
     Cohort,
     TYPE_APICAL,

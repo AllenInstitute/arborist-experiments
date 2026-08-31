@@ -42,7 +42,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from arborist_experiments.cells import CellGraph
+from arborist_experiments.utils.cells import CellGraph
 
 
 N_POLYLINE = 33                     # stored points per branch; L and C are measured on these

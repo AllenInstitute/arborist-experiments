@@ -12,8 +12,8 @@ from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import log_loss
 
-from arborist_experiments.morphology_cv.classifier import GRID
-from arborist_experiments.morphology_cv.gpu_logreg import (
+from arborist_experiments.global_classification.cv.classifier import GRID
+from arborist_experiments.global_classification.cv.gpu_logreg import (
     TorchElasticNetLogReg, elasticnet_objective,
 )
 

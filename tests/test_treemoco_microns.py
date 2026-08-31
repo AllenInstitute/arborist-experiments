@@ -17,14 +17,14 @@ import os
 import numpy as np
 import pytest
 
-from arborist_experiments.microns_morphology_benchmark.data_loading import (
+from arborist_experiments.global_classification.microns.data_loading import (
     CACHE_PATH, INH_CACHE_PATH, TYPE_APICAL, TYPE_AXON, TYPE_BASAL, TYPE_SOMA,
     cell_from_cache, load_cache,
 )
-from arborist_experiments.microns_morphology_benchmark.pretrain_treemoco_microns import (
+from arborist_experiments.global_classification.microns.pretrain_treemoco_microns import (
     SOURCE_CACHES, build_corpus, feature_names,
 )
-from arborist_experiments.microns_morphology_benchmark.probe_treemoco_microns import (
+from arborist_experiments.global_classification.microns.probe_treemoco_microns import (
     KEY_PREFIX, align_to_cohort,
 )
 from arborist_experiments.treemoco.tree_features import (
@@ -207,7 +207,7 @@ def test_align_to_cohort_raises_rather_than_dropping_cells():
 
 
 def test_key_prefixes_cover_every_benchmark_source():
-    from arborist_experiments.microns_morphology_benchmark.data_loading import SOURCES
+    from arborist_experiments.global_classification.microns.data_loading import SOURCES
 
     assert set(KEY_PREFIX) == set(SOURCES)
     assert set(KEY_PREFIX.values()) == set(SOURCE_CACHES)

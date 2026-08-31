@@ -31,14 +31,14 @@ import torch
 from arborist.data.datasets import collate_curves
 from arborist.models.curve_transformer import CurveAutoencoder
 
-from arborist_experiments.patchseq_morphology_benchmark.data_loading import (
+from arborist_experiments.global_classification.patchseq.data_loading import (
     Cohort, TYPE_SOMA, _iter_swc, build_cohort,
 )
-from arborist_experiments.patchseq_morphology_benchmark.features import _run_jobs
-from arborist_experiments.patchseq_morphology_benchmark.radial_arbor_features import (
+from arborist_experiments.global_classification.patchseq.features import _run_jobs
+from arborist_experiments.global_classification.patchseq.radial_arbor_features import (
     STRUCTURE_GROUPINGS, _real_edges,
 )
-from arborist_experiments.experiment_harness import (
+from arborist_experiments.utils.runs import (
     log as _log,
     mirror_file,
     next_version_dir as _next_version_dir,

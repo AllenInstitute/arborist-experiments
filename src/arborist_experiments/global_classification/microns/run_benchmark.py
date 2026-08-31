@@ -25,10 +25,10 @@ import time
 
 import numpy as np
 
-from arborist_experiments.morphology_cv import persistence
-from arborist_experiments.morphology_cv.classifier import GRID, run_cv
-from arborist_experiments.patchseq_morphology_benchmark.gaussian_baseline import run_gaussian_cv
-from arborist_experiments.cells.plots import (
+from arborist_experiments.global_classification.cv import persistence
+from arborist_experiments.global_classification.cv.classifier import GRID, run_cv
+from arborist_experiments.global_classification.patchseq.gaussian_baseline import run_gaussian_cv
+from arborist_experiments.utils.cells.plots import (
     plot_confusion, plot_embedding,
 )
 from . import feature_cache
@@ -45,11 +45,11 @@ from .features import (
 from .inh_constants import apply_inh_constants
 from .modality import MODALITY_TYPES, UNAVAILABLE, check_modality, patchseq_modality_types
 from .radial_arbor_features import extract_radial_arbors
-from arborist_experiments.experiment_harness import (
+from arborist_experiments.global_classification.rows import write_rows
+from arborist_experiments.utils.runs import (
     log as _log,
     mirror_dir,
     next_version_dir as _next_version_dir,
-    write_rows,
 )
 
 

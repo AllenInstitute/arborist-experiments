@@ -21,7 +21,7 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import StratifiedKFold
 
-from arborist_experiments.morphology_cv.classifier import CVResult
+from arborist_experiments.global_classification.cv.classifier import CVResult
 from .modality import filter_cell
 
 
