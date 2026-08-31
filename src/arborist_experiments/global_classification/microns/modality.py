@@ -11,28 +11,16 @@ basal -- and 5251 cells (66.5%) carry axon nodes. So `full`/`axon` are real ther
 `basal`/`apical` are not: there is no type-4 node anywhere, which makes `basal` a duplicate of
 `dendrite` and `apical` empty.
 
-`filter_cell` stays a pure function of (cell, modality); the cohort-dependent gate is
-`check_modality(source, modality)`, which the driver calls once before extraction so an
-unavailable modality is a startup error rather than 48k identical failures inside a pool.
+`extract.modality.filter_cell` stays a pure function of (cell, modality); the cohort-dependent
+gate is `check_modality(source, modality)`, which the driver calls once before extraction so an
+unavailable modality is a startup error rather than 48k identical failures inside a pool. That
+split is why only the gate lives here.
 """
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Optional
+from arborist_experiments.global_classification.extract import MODALITY_TYPES
 
-from arborist_experiments.global_classification.patchseq.data_loading import (
-    Cell, TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL,
-)
-
-
-MODALITY_TYPES = {
-    "full":     {TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL},
-    "axon":     {TYPE_SOMA, TYPE_AXON},
-    "dendrite": {TYPE_SOMA, TYPE_BASAL, TYPE_APICAL},
-    "basal":    {TYPE_SOMA, TYPE_BASAL},
-    "apical":   {TYPE_SOMA, TYPE_APICAL},
-}
 
 # Which modalities are meaningful depends on the cohort, not on `filter_cell`, so the gate is
 # keyed by source and enforced by the driver before extraction starts. `full`/`axon` are real on
@@ -59,31 +47,3 @@ def check_modality(source: str, modality: str) -> None:
     reason = UNAVAILABLE.get(source, {}).get(modality)
     if reason:
         raise ValueError(f"modality {modality!r} is not available on cohort {source!r}: {reason}")
-
-
-@contextmanager
-def patchseq_modality_types():
-    """Temporarily teach the Patch-seq `filter_cell` about `basal`/`apical`.
-
-    `gaussian_baseline.run_gaussian_cv` is imported unchanged -- it is the baseline
-    implementation and editing it would put its published numbers in doubt -- but it calls the
-    Patch-seq `filter_cell`, which raises on modalities its own MODALITY_TYPES lacks. Patch-seq's
-    `dendrite` set is {1,3,4}, identical to ours, so this only *adds* the two missing keys and is
-    a no-op for the default modality.
-    """
-    import arborist_experiments.global_classification.patchseq.modality as ps
-
-    assert ps.MODALITY_TYPES["dendrite"] == MODALITY_TYPES["dendrite"]
-    added = {k: v for k, v in MODALITY_TYPES.items() if k not in ps.MODALITY_TYPES}
-    ps.MODALITY_TYPES.update(added)
-    try:
-        yield
-    finally:
-        for k in added:
-            del ps.MODALITY_TYPES[k]
-
-
-def filter_cell(cell: Cell, modality: str) -> Optional[Cell]:
-    if modality not in MODALITY_TYPES:
-        raise ValueError(f"Unknown modality {modality!r}")
-    return cell.filtered(MODALITY_TYPES[modality])

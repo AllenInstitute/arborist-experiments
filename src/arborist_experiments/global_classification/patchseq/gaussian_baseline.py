@@ -22,7 +22,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import StratifiedKFold
 
 from arborist_experiments.global_classification.cv.classifier import CVResult
-from .modality import filter_cell
+from arborist_experiments.global_classification.extract import filter_cell
 
 
 COV_RIDGE = 1e-3

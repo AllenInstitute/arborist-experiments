@@ -29,36 +29,37 @@ import os
 
 import numpy as np
 
-from . import features
-from . import radial_arbor_features as raf
-from .features import FeatureResult
+from arborist_experiments.global_classification.extract import BinningConfig, FeatureResult
 
 
 CACHE_ROOT = "/root/capsule/scratch/features"
 
 
-def constants_digest() -> str:
+def constants_digest(cfg: BinningConfig) -> str:
     """Digest of every binning constant a feature value depends on.
 
-    Read off the modules rather than from import-time copies: an inhibitory run rebinds them via
-    apply_inh_constants, and a stale copy here would key its matrices under the excitatory ones.
+    The payload is built exactly as it was when it read live module globals -- same five keys,
+    same coercions, same sort -- because the published `em_exc` cache directory is named after
+    its output. `em_exc` must digest to 2a91b6b7; `tests/test_binning_configs.py` pins that.
+
+    `cfg.name` is not in the payload: it is a label, not a constant a feature value depends on.
     """
     payload = json.dumps({
-        "density_config": features.DENSITY_CONFIG,
-        "sholl_radii": [float(r) for r in features.SHOLL_RADII],
+        "density_config": cfg.density_config,
+        "sholl_radii": [float(r) for r in cfg.sholl_radii],
         "persim_kwargs": {k: (list(v) if isinstance(v, tuple) else v)
-                          for k, v in features.PERSIM_KWARGS.items()},
-        "r_edges": raf.R_EDGES.tolist(),
-        "z_edges": raf.Z_EDGES.tolist(),
+                          for k, v in cfg.persim_kwargs.items()},
+        "r_edges": cfg.r_edges.tolist(),
+        "z_edges": cfg.z_edges.tolist(),
     }, sort_keys=True)
     return hashlib.sha1(payload.encode()).hexdigest()[:8]
 
 
-def cohort_key(cohort, source: str, real_radius: bool) -> str:
+def cohort_key(cohort, source: str, real_radius: bool, cfg: BinningConfig) -> str:
     ids = sorted(c.specimen_id for c in cohort.cells)
     id_hash = hashlib.sha1("\n".join(ids).encode()).hexdigest()[:12]
     return (f"{source}_n{len(ids)}_{id_hash}"
-            f"_r{int(bool(real_radius))}_c{constants_digest()}")
+            f"_r{int(bool(real_radius))}_c{constants_digest(cfg)}")
 
 
 def cache_dir(key: str, root: str = CACHE_ROOT) -> str:

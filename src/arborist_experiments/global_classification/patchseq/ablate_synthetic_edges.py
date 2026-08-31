@@ -41,13 +41,13 @@ import networkx as nx
 import numpy as np
 
 from arborist_experiments.global_classification.cv import classifier
-from arborist_experiments.global_classification.patchseq import features as F
+from arborist_experiments.global_classification.extract import features as F
 from arborist_experiments.global_classification.cv.classifier import run_cv
 from arborist_experiments.global_classification.patchseq.data_loading import Cell, build_cohort
-from arborist_experiments.global_classification.patchseq.modality import filter_cell
+from arborist_experiments.global_classification.extract import cell_to_neurontree, filter_cell
+from arborist_experiments.global_classification.patchseq.binning import PATCHSEQ
 from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
-from arborist_experiments.global_classification.patchseq.swc_adapter import cell_to_neurontree
 from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
     log as _log,
@@ -224,7 +224,7 @@ def main(args):
             _log(fh, f"########## arm {arm}: _build_nt -> {F._build_nt.__name__} ##########")
             for rep in reps:
                 t0 = time.time()
-                fr = EXTRACTORS[rep](cohort, MODALITY)
+                fr = EXTRACTORS[rep](cohort, MODALITY, PATCHSEQ)
                 reasons = Counter(r for _sid, r in fr.skipped)
                 _log(fh, f"--- {arm} x {rep} --- {len(fr.specimen_ids)} cells, "
                          f"{fr.X.shape[1]} features, {len(fr.skipped)} skipped, "

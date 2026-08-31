@@ -32,20 +32,18 @@ from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import (
     plot_confusion, plot_embedding,
 )
+from arborist_experiments.global_classification.extract import (
+    MODALITY_TYPES,
+    extract_density_xy, extract_density_xz, extract_density_yz,
+    extract_morphometrics, extract_persistence_image, extract_radial_arbors, extract_sholl,
+)
 from . import feature_cache
-from . import features
-from . import radial_arbor_features as raf
+from .binning import CONFIGS
 from .data_loading import (
     CACHE_PATH, INH_CACHE_PATH, INH_LABELS_PATH, LABELS_PATH, build_cohort_from_source,
     class_counts, soma_depth_features, subsample_per_class, subsample_proportional,
 )
-from .features import (
-    extract_density_xy, extract_density_xz, extract_density_yz,
-    extract_morphometrics, extract_persistence_image, extract_sholl,
-)
-from .inh_constants import apply_inh_constants
-from .modality import MODALITY_TYPES, UNAVAILABLE, check_modality, patchseq_modality_types
-from .radial_arbor_features import extract_radial_arbors
+from .modality import UNAVAILABLE, check_modality
 from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
     log as _log,
@@ -86,21 +84,21 @@ def _mirror(src_dir: str, dst_dir: str) -> None:
     mirror_dir(src_dir, dst_dir, prefix="benchmark_", generic_names=GENERIC_NAMES)
 
 
-def _write_run_config(out_dir: str, extra: dict) -> None:
-    # Read the binning constants off the modules, not from import-time copies: an inhibitory run
-    # rebinds them via apply_inh_constants, and a stale copy here would record the wrong ones.
-    cfg = {
+def _write_run_config(out_dir: str, cfg, extra: dict) -> None:
+    record = {
         "min_class_size": MIN_CLASS_SIZE, "seed": SEED,
-        "density_config": features.DENSITY_CONFIG,
-        "r_edges": raf.R_EDGES.tolist(), "z_edges": raf.Z_EDGES.tolist(),
+        "binning_config": cfg.name,
+        "density_config": cfg.density_config,
+        "r_edges": cfg.r_edges.tolist(), "z_edges": cfg.z_edges.tolist(),
         "grid": {k: v for k, v in GRID.items()},
     }
-    cfg.update(extra)
+    record.update(extra)
     with open(os.path.join(out_dir, "run_config.json"), "w") as f:
-        json.dump(cfg, f, indent=2, sort_keys=True, default=str)
+        json.dump(record, f, indent=2, sort_keys=True, default=str)
 
 
-def _write_desc(out_dir, cohort, rep_list, mod_list, outer_k, inner_k, args, n_classes) -> None:
+def _write_desc(out_dir, cohort, rep_list, mod_list, outer_k, inner_k, args, n_classes,
+                cfg) -> None:
     chance = 1.0 / n_classes
     counts = class_counts(cohort)
     axon_cells = sum(1 for c in cohort.cells if (c.types == 2).any())
@@ -131,9 +129,10 @@ def _write_desc(out_dir, cohort, rep_list, mod_list, outer_k, inner_k, args, n_c
     src = "all 49803 exc cells / 93.4M nodes" if args.source == "em_exc" else \
           "all 7824 inh cells / 36.2M nodes, union of the dendrite/axon/full envelopes"
     lines += [f"* Derived constants (derive_constants.py, {src})",
-              f"    DENSITY_CONFIG = {features.DENSITY_CONFIG}",
-              f"    R_EDGES = linspace({raf.R_EDGES[0]}, {raf.R_EDGES[-1]}, {len(raf.R_EDGES)})",
-              f"    Z_EDGES = linspace({raf.Z_EDGES[0]}, {raf.Z_EDGES[-1]}, {len(raf.Z_EDGES)})",
+              f"    binning config = {cfg.name}",
+              f"    DENSITY_CONFIG = {cfg.density_config}",
+              f"    R_EDGES = linspace({cfg.r_edges[0]}, {cfg.r_edges[-1]}, {len(cfg.r_edges)})",
+              f"    Z_EDGES = linspace({cfg.z_edges[0]}, {cfg.z_edges[-1]}, {len(cfg.z_edges)})",
               "    SHOLL_RADII, PERSIM_KWARGS unchanged from Patch-seq for comparability", ""]
     lines += ["* Modalities",
               f"    scored = {mod_list!r}",
@@ -202,10 +201,8 @@ def main(args):
     _log(fh, f"Cores: {os.cpu_count()}  extract workers: {N_WORKERS}  "
              f"solver: {args.solver}/{args.dtype}")
 
-    # Before any cohort is built and long before the first process pool is forked: the workers
-    # inherit these module globals, so rebinding them later would silently produce a mix.
-    if args.source == "microns_inh":
-        apply_inh_constants(log=lambda m: _log(fh, m))
+    cfg = CONFIGS[args.source]
+    _log(fh, f"Binning config: {cfg.name} (digest {feature_cache.constants_digest(cfg)})")
 
     _log(fh, "Building cohort...")
     if args.source == "em_exc":
@@ -256,20 +253,20 @@ def main(args):
     _log(fh, f"Cohort: {len(cohort)} cells, {n_classes} classes, chance={chance:.4f}")
     _log(fh, f"  {class_counts(cohort)}")
 
-    fc_key = feature_cache.cohort_key(cohort, args.source, args.real_radius)
+    fc_key = feature_cache.cohort_key(cohort, args.source, args.real_radius, cfg)
     fc_meta = {"source": args.source, "n_cells": len(cohort), "real_radius": args.real_radius,
                "label_column": args.label_column, "min_class_size": MIN_CLASS_SIZE,
                "n_cells_requested": args.n_cells, "max_per_class": args.max_per_class,
                "smoke": bool(args.smoke), "seed": SEED,
-               "constants_digest": feature_cache.constants_digest(),
-               "density_config": features.DENSITY_CONFIG,
-               "r_edges": raf.R_EDGES.tolist(), "z_edges": raf.Z_EDGES.tolist(),
+               "constants_digest": feature_cache.constants_digest(cfg),
+               "density_config": cfg.density_config,
+               "r_edges": cfg.r_edges.tolist(), "z_edges": cfg.z_edges.tolist(),
                "cache_path": args.cache}
     _log(fh, "Feature cache: disabled (--no_feature_cache)" if args.no_feature_cache
              else f"Feature cache: {feature_cache.cache_dir(fc_key)}")
 
     _write_manifest(cohort, os.path.join(out_dir, "cohort_manifest.csv"))
-    _write_run_config(out_dir, {
+    _write_run_config(out_dir, cfg, {
         "source": args.source, "cache_path": args.cache, "labels_path": args.labels,
         "coordinates": ("swc_upright (soma-centered on all three axes)" if args.source == "em_exc"
                         else "global rotated into upright by inh_id_map, then soma-centered"),
@@ -286,7 +283,7 @@ def main(args):
         "chance_balanced_accuracy": chance,
         "feature_cache": (None if args.no_feature_cache else feature_cache.cache_dir(fc_key)),
     })
-    _write_desc(out_dir, cohort, rep_list, mod_list, outer_k, inner_k, args, n_classes)
+    _write_desc(out_dir, cohort, rep_list, mod_list, outer_k, inner_k, args, n_classes, cfg)
     _mirror(out_dir, RESULTS_DIR)
 
     csv_path = os.path.join(out_dir, "benchmark_metrics.csv")
@@ -305,9 +302,8 @@ def main(args):
                 t0 = time.time()
 
                 if kind == "generative":
-                    with patchseq_modality_types():
-                        cv, skipped = extractor(cohort, mod, outer_k=outer_k,
-                                                inner_k=inner_k, seed=SEED)
+                    cv, skipped = extractor(cohort, mod, outer_k=outer_k,
+                                            inner_k=inner_k, seed=SEED)
                     _log(fh, f"  gaussian cv: {len(skipped)} skipped in {time.time() - t0:.1f}s")
                     if cv is None:
                         _log(fh, "  too few cells or degenerate labels, skipping.")
@@ -331,7 +327,7 @@ def main(args):
                              f"{fr.X.shape[1]} features, {len(fr.skipped)} skipped "
                              f"({time.time() - t0:.1f}s)")
                 else:
-                    fr = extractor(cohort) if kind == "control" else extractor(cohort, mod)
+                    fr = extractor(cohort) if kind == "control" else extractor(cohort, mod, cfg)
                     _log(fh, f"  extract: {len(fr.specimen_ids)} cells, {fr.X.shape[1]} features, "
                              f"{len(fr.skipped)} skipped in {time.time() - t0:.1f}s")
                     if not args.no_feature_cache:

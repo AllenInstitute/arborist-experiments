@@ -6,7 +6,9 @@ each: handcrafted density/Sholl/persistence/morphometric blocks, radial arbor pr
 encodings, and TreeMoCo embeddings. The representation is the variable; the label space, the
 cross-validation and the metrics CSV are held fixed so the rows are comparable.
 
-`cv` is that fixed nested-CV harness and `rows` writes the CSV. Both live here rather than in
+`extract` is the one implementation of the handcrafted blocks, shared by both cohorts and
+parameterised by a per-cohort `BinningConfig`; each cohort package supplies its own configs.
+`cv` is the fixed nested-CV harness and `rows` writes the CSV. Both live here rather than in
 `utils` because nothing outside this task uses them -- `merge_detection` scores something else
 entirely, and `treemoco` is a representation, not a task.
 

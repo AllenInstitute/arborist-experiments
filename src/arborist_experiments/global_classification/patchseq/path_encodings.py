@@ -35,7 +35,7 @@ from arborist_experiments.global_classification.patchseq.data_loading import (
     Cohort, TYPE_SOMA, _iter_swc, build_cohort,
 )
 from arborist_experiments.utils.cells import run_jobs
-from arborist_experiments.global_classification.patchseq.radial_arbor_features import (
+from arborist_experiments.global_classification.extract.radial_arbor_features import (
     STRUCTURE_GROUPINGS, _real_edges,
 )
 from arborist_experiments.utils.runs import (

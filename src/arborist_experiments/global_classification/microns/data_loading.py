@@ -315,7 +315,7 @@ def soma_depth_features(cohort: Cohort):
     The coarse labels are laminar, so this is the number every morphology representation must
     be read against -- not chance. Marked as a control, not a representation.
     """
-    from .features import FeatureResult
+    from arborist_experiments.global_classification.extract import FeatureResult
 
     X = np.stack([np.asarray(cohort.pia_y, dtype=float),
                   np.asarray(cohort.wm_y, dtype=float)], axis=1)

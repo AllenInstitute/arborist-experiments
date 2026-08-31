@@ -27,6 +27,7 @@ __all__ = [
     "TYPE_BASAL",
     "TYPE_SOMA",
     "build_cohort",
+    "extract_precomputed_morphometrics",
     "load_precomputed_morphometrics",
     "load_subclass_labels",
 ]
@@ -45,6 +46,44 @@ def load_precomputed_morphometrics(met_path: str) -> tuple[list[str], np.ndarray
         X = f["morphometric/data"][:]
         feats = [s.decode() for s in f["morphometric/features"][:]]
     return ids, X, feats
+
+
+def extract_precomputed_morphometrics(cohort: Cohort, met_path: str):
+    """The MET table's own curated morphometrics, as a FeatureResult.
+
+    Lives here rather than with the shared extractors because it reads a Patch-seq table instead
+    of a reconstruction: there is no MICrONS counterpart, and since it is the strongest Patch-seq
+    row (0.830) the top of the MICrONS ranking is necessarily a different representation -- a
+    property of the datasets, not a result. `microns.data_loading.soma_depth_features` is the
+    same shape of thing on the other cohort.
+    """
+    from arborist_experiments.global_classification.extract import FeatureResult
+
+    ids, X_all, feats = load_precomputed_morphometrics(met_path)
+    id_to_row = {i: k for k, i in enumerate(ids)}
+    cohort_ids = [c.specimen_id for c in cohort.cells]
+
+    rows: list[tuple[str, np.ndarray]] = []
+    skipped: list[tuple[str, str]] = []
+    for sid in cohort_ids:
+        k = id_to_row.get(sid)
+        if k is None:
+            skipped.append((sid, "precomputed_morphometrics: not in MET table"))
+            continue
+        rows.append((sid, X_all[k]))
+    if not rows:
+        return FeatureResult(specimen_ids=[], X=np.zeros((0, len(feats))),
+                             feature_names=feats, skipped=skipped)
+    X = np.vstack([r[1] for r in rows])
+    col_ok = ~np.all(np.isnan(X), axis=0)
+    X = X[:, col_ok]
+    kept_feats = [n for n, ok in zip(feats, col_ok) if ok]
+    col_mean = np.nanmean(X, axis=0)
+    inds = np.where(np.isnan(X))
+    X[inds] = np.take(col_mean, inds[1])
+    return FeatureResult(
+        specimen_ids=[r[0] for r in rows], X=X, feature_names=kept_feats, skipped=skipped,
+    )
 
 
 def _per_cell(f: h5py.File, group: str, i: int) -> np.ndarray:

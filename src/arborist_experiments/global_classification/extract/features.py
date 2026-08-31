@@ -1,3 +1,12 @@
+"""The MorphoPy-derived representations, shared by both cohorts.
+
+Density projections, persistence images, Sholl profiles and morphometric statistics. Everything
+that varies by cohort arrives as a `BinningConfig`; nothing here knows which dataset it is
+running on. There were two copies of this file, 295 and 306 lines, differing in three literals.
+
+`_build_nt` is looked up as a module global on purpose -- `ablate_synthetic_edges` rebinds it to
+swap in a pruned-graph builder for every extractor at once, which fork carries into the workers.
+"""
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -80,46 +89,13 @@ def _empty_safe_reductions():
     finally:
         feature_presentation.np = original
 
-from arborist_experiments.utils.cells import run_jobs
-from arborist_experiments.global_classification.patchseq.swc_adapter import cell_to_neurontree
-from .data_loading import Cell, Cohort
+from arborist_experiments.utils.cells import CellGraph, Cohort, run_jobs
+from .binning import BinningConfig
 from .modality import filter_cell
+from .swc_adapter import cell_to_neurontree
 
 
 log = logging.getLogger(__name__)
-
-
-# Same derivation rule as the Patch-seq config -- pooled-node p0.5-p99.5 per axis, rounded out
-# to the next bin_size -- but re-derived on this cohort by derive_constants.py over all 49803
-# cells / 93.4M soma+dendrite nodes: x -150.3..148.6, y -179.9..454.7, z -137.0..132.4.
-# The box is smaller than Patch-seq's in x and y and larger in z, so feature counts drop
-# (xy 512 / xz 224 / yz 448 against 1440 / 750 / 1200): MICrONS EM arbors are laterally more
-# compact, and z here is a real ~280 um extent rather than a ~200 um slice thickness.
-DENSITY_CONFIG = {
-    "density": True,
-    "smooth": True,
-    "sigma": 1,
-    "bin_size": 20,
-    "r_min_x": -160.0, "r_max_x": 160.0,
-    "r_min_y": -180.0, "r_max_y": 460.0,
-    "r_min_z": -140.0, "r_max_z": 140.0,
-}
-
-# Deliberately unchanged from Patch-seq, so this row stays directly comparable to the 0.380
-# baseline. The derivation rule would give 640 (per-cell max radius p99 = 626), within 6% of
-# 600. Note the median cell only reaches 257 um, so the outer half of the profile is
-# identically zero for most cells -- those become zero-variance columns, which StandardScaler
-# maps to 0 rather than dropping.
-SHOLL_RADII = list(np.arange(10.0, 610.0, 10.0))
-
-# Unchanged from Patch-seq: the measured birth/death envelope on this cohort falls inside
-# (0, 500). Note extract_persistence_image passes (birth, death) with skew=False, so axis 2 is
-# death rather than persistence -- a pre-existing quirk kept deliberately for comparability.
-PERSIM_KWARGS = dict(
-    birth_range=(0.0, 500.0),
-    pers_range=(0.0, 500.0),
-    pixel_size=25.0,
-)
 
 
 @dataclass
@@ -130,7 +106,7 @@ class FeatureResult:
     skipped: list[tuple[str, str]]      # (specimen_id, reason)
 
 
-def _build_nt(cell: Cell, modality: str):
+def _build_nt(cell: CellGraph, modality: str):
     sub = filter_cell(cell, modality)
     if sub is None:
         return None, "no nodes for modality"
@@ -140,17 +116,17 @@ def _build_nt(cell: Cell, modality: str):
         return None, f"neurontree build: {type(e).__name__}: {e}"
 
 
-def _job_density(cell: Cell, modality: str, axis: str):
+def _job_density(cell: CellGraph, modality: str, cfg: BinningConfig, axis: str):
     nt, err = _build_nt(cell, modality)
     if err is not None:
         return cell.specimen_id, None, None, err
     try:
-        return cell.specimen_id, _density_projection(nt, axis), None, None
+        return cell.specimen_id, _density_projection(nt, cfg, axis), None, None
     except Exception as e:
         return cell.specimen_id, None, None, f"density_{axis}: {type(e).__name__}: {e}"
 
 
-def _job_persistence(cell: Cell, modality: str):
+def _job_persistence(cell: CellGraph, modality: str, cfg: BinningConfig):
     nt, err = _build_nt(cell, modality)
     if err is not None:
         return cell.specimen_id, None, None, err
@@ -164,29 +140,30 @@ def _job_persistence(cell: Cell, modality: str):
         diagram = np.stack([births[mask], deaths[mask]], axis=1)
         if len(diagram) == 0:
             return cell.specimen_id, None, None, "persistence: empty diagram"
-        img = PersistenceImager(**PERSIM_KWARGS).transform(diagram, skew=False)
+        img = PersistenceImager(**cfg.persim_kwargs).transform(diagram, skew=False)
         return cell.specimen_id, np.asarray(img).ravel(), None, None
     except Exception as e:
         return cell.specimen_id, None, None, f"persistence: {type(e).__name__}: {e}"
 
 
-def _job_sholl(cell: Cell, modality: str):
+def _job_sholl(cell: CellGraph, modality: str, cfg: BinningConfig):
     nt, err = _build_nt(cell, modality)
     if err is not None:
         return cell.specimen_id, None, None, err
     try:
+        radii = cfg.sholl_radii
         intersections, _intervals = nt.get_sholl_intersection_profile(
-            proj="xy", centroid="soma", radii=SHOLL_RADII
+            proj="xy", centroid="soma", radii=radii
         )
         v = np.asarray(intersections, dtype=float)
-        if len(v) != len(SHOLL_RADII):
-            v = np.pad(v, (0, len(SHOLL_RADII) - len(v)), constant_values=0.0)[:len(SHOLL_RADII)]
+        if len(v) != len(radii):
+            v = np.pad(v, (0, len(radii) - len(v)), constant_values=0.0)[:len(radii)]
         return cell.specimen_id, v, None, None
     except Exception as e:
         return cell.specimen_id, None, None, f"sholl: {type(e).__name__}: {e}"
 
 
-def _job_morphometrics(cell: Cell, modality: str):
+def _job_morphometrics(cell: CellGraph, modality: str):
     nt, err = _build_nt(cell, modality)
     if err is not None:
         return cell.specimen_id, None, None, err
@@ -206,8 +183,8 @@ def _stack(rows: list[tuple[str, np.ndarray]], names: list[str], skipped) -> Fea
     return FeatureResult(specimen_ids=ids, X=X, feature_names=names, skipped=skipped)
 
 
-def _density_projection(nt, axis: str) -> np.ndarray:
-    d = compute_density_maps(nt, config_params=DENSITY_CONFIG)
+def _density_projection(nt, cfg: BinningConfig, axis: str) -> np.ndarray:
+    d = compute_density_maps(nt, config_params=cfg.density_config)
     return np.asarray(d[f"{axis}_proj"]["data"]).ravel()
 
 
@@ -227,40 +204,43 @@ def _collect_fixed_width(results, label: str, name_fn) -> FeatureResult:
     return _stack(rows, names or [], skipped)
 
 
-def extract_density(cohort: Cohort, modality: str, axis: str) -> FeatureResult:
-    results = run_jobs(cohort, _job_density, modality, axis)
+def extract_density(cohort: Cohort, modality: str, cfg: BinningConfig, axis: str) -> FeatureResult:
+    results = run_jobs(cohort, _job_density, modality, cfg, axis)
     return _collect_fixed_width(
         results, f"density_{axis}", lambda n: [f"density_{axis}_{i}" for i in range(n)]
     )
 
 
-def extract_density_xy(cohort, modality):
-    return extract_density(cohort, modality, "xy")
+def extract_density_xy(cohort, modality, cfg):
+    return extract_density(cohort, modality, cfg, "xy")
 
 
-def extract_density_xz(cohort, modality):
-    return extract_density(cohort, modality, "xz")
+def extract_density_xz(cohort, modality, cfg):
+    return extract_density(cohort, modality, cfg, "xz")
 
 
-def extract_density_yz(cohort, modality):
-    return extract_density(cohort, modality, "yz")
+def extract_density_yz(cohort, modality, cfg):
+    return extract_density(cohort, modality, cfg, "yz")
 
 
-def extract_persistence_image(cohort: Cohort, modality: str) -> FeatureResult:
-    results = run_jobs(cohort, _job_persistence, modality)
+def extract_persistence_image(cohort: Cohort, modality: str, cfg: BinningConfig) -> FeatureResult:
+    results = run_jobs(cohort, _job_persistence, modality, cfg)
     return _collect_fixed_width(
         results, "persistence", lambda n: [f"persim_{i}" for i in range(n)]
     )
 
 
-def extract_sholl(cohort: Cohort, modality: str) -> FeatureResult:
-    results = run_jobs(cohort, _job_sholl, modality)
+def extract_sholl(cohort: Cohort, modality: str, cfg: BinningConfig) -> FeatureResult:
+    results = run_jobs(cohort, _job_sholl, modality, cfg)
     return _collect_fixed_width(
-        results, "sholl", lambda n: [f"sholl_r{int(r)}" for r in SHOLL_RADII]
+        results, "sholl", lambda n: [f"sholl_r{int(r)}" for r in cfg.sholl_radii]
     )
 
 
-def extract_morphometrics(cohort: Cohort, modality: str) -> FeatureResult:
+def extract_morphometrics(cohort: Cohort, modality: str, cfg: BinningConfig) -> FeatureResult:
+    # `cfg` is unused: morphopy's morphometric statistics are lengths and angles, not histograms,
+    # so no bin edge reaches them. Accepted anyway so every entry in a driver's EXTRACTORS table
+    # has one signature.
     rows: list[tuple[str, np.ndarray]] = []
     skipped: list[tuple[str, str]] = []
     names: Optional[list[str]] = None
@@ -287,9 +267,3 @@ def extract_morphometrics(cohort: Cohort, modality: str) -> FeatureResult:
             specimen_ids=[r[0] for r in rows], X=X, feature_names=names, skipped=skipped,
         )
     return _stack(rows, names or [], skipped)
-
-
-# extract_precomputed_morphometrics is deliberately absent: it read the Patch-seq MET table's
-# curated morphometrics, which has no MICrONS counterpart. Since it was the strongest Patch-seq
-# row (0.830), the top of the MICrONS ranking is necessarily a different representation -- a
-# property of the datasets, not a result.

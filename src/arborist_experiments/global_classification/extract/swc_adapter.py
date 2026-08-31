@@ -3,10 +3,10 @@ import pandas as pd
 
 from morphopy.neurontree.NeuronTree import NeuronTree
 
-from .data_loading import Cell
+from arborist_experiments.utils.cells import CellGraph
 
 
-def cell_to_swc_df(cell: Cell) -> pd.DataFrame:
+def cell_to_swc_df(cell: CellGraph) -> pd.DataFrame:
     n = len(cell.types)
     parent_1based = np.where(cell.parents == -1, -1, cell.parents + 1)
     return pd.DataFrame({
@@ -20,5 +20,5 @@ def cell_to_swc_df(cell: Cell) -> pd.DataFrame:
     })
 
 
-def cell_to_neurontree(cell: Cell) -> NeuronTree:
+def cell_to_neurontree(cell: CellGraph) -> NeuronTree:
     return NeuronTree(swc=cell_to_swc_df(cell))

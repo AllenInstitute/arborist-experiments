@@ -22,17 +22,16 @@ from collections import defaultdict
 import numpy as np
 
 from arborist_experiments.global_classification.cv import classifier, persistence
-from arborist_experiments.global_classification.patchseq.data_loading import (
-    Cohort, build_cohort, load_precomputed_morphometrics,
-)
-from arborist_experiments.global_classification.patchseq.features import (
+from arborist_experiments.global_classification.extract import (
     extract_density_xy, extract_density_xz, extract_density_yz,
-    extract_persistence_image, extract_sholl, extract_morphometrics,
-    extract_precomputed_morphometrics,
+    extract_morphometrics, extract_persistence_image, extract_radial_arbors, extract_sholl,
+)
+from arborist_experiments.global_classification.patchseq.binning import PATCHSEQ
+from arborist_experiments.global_classification.patchseq.data_loading import (
+    Cohort, build_cohort, extract_precomputed_morphometrics, load_precomputed_morphometrics,
 )
 from arborist_experiments.global_classification.cv.classifier import run_cv
 from arborist_experiments.global_classification.patchseq.gaussian_baseline import run_gaussian_cv
-from arborist_experiments.global_classification.patchseq.radial_arbor_features import extract_radial_arbors
 from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
 from arborist_experiments.global_classification.rows import write_rows
@@ -264,7 +263,7 @@ def main(args):
                 if kind == "baseline":
                     fr = extractor(cohort, MET_PATH)
                 else:
-                    fr = extractor(cohort, mod)
+                    fr = extractor(cohort, mod, PATCHSEQ)
                 _log(fh, f"  extract: {len(fr.specimen_ids)} cells, {fr.X.shape[1]} features, "
                          f"{len(fr.skipped)} skipped in {time.time() - t0:.1f}s")
                 if fr.skipped:

@@ -1,8 +1,8 @@
 """Derive the binning constants for this cohort from the cache, and report them.
 
 This script never edits code. It prints the percentile table; the numbers are then copied into
-features.py / radial_arbor_features.py by hand with a comment naming this derivation, which is
-how the Patch-seq constants are documented and what makes them auditable.
+binning.py by hand with a comment naming this derivation, which is how the Patch-seq constants
+are documented and what makes them auditable.
 
 Rule, identical to the Patch-seq one: pooled-node p0.5-p99.5 per axis, rounded outward to the
 next bin_size multiple. Reads the cache, never the source file.

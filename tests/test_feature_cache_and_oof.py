@@ -14,6 +14,7 @@ with the specimen ids they are joined by.
 from __future__ import annotations
 
 import csv
+from dataclasses import replace
 from types import SimpleNamespace
 
 import numpy as np
@@ -25,7 +26,8 @@ from arborist_experiments.global_classification.cv import persistence
 from arborist_experiments.global_classification.cv.classifier import (
     GRID, CVResult, boundary_hits, run_cv,
 )
-from arborist_experiments.global_classification.microns.features import FeatureResult
+from arborist_experiments.global_classification.extract import FeatureResult
+from arborist_experiments.global_classification.microns.binning import EM_EXC
 
 
 def _cohort(ids):
@@ -44,30 +46,29 @@ def _fr(ids, n_features=4):
 
 # --- the cache key --------------------------------------------------------------------------
 
-def test_key_changes_with_membership_radius_and_constants(monkeypatch):
+def test_key_changes_with_membership_radius_and_constants():
     a = _cohort(["1", "2", "3"])
     b = _cohort(["1", "2", "4"])
-    k = feature_cache.cohort_key(a, "em_exc", False)
-    assert feature_cache.cohort_key(b, "em_exc", False) != k, "membership must be in the key"
-    assert feature_cache.cohort_key(a, "microns_inh", False) != k
+    k = feature_cache.cohort_key(a, "em_exc", False, EM_EXC)
+    assert feature_cache.cohort_key(b, "em_exc", False, EM_EXC) != k, "membership must be in key"
+    assert feature_cache.cohort_key(a, "microns_inh", False, EM_EXC) != k
     # real_radius changes feature *values* without changing membership, so it cannot be implied.
-    assert feature_cache.cohort_key(a, "em_exc", True) != k
+    assert feature_cache.cohort_key(a, "em_exc", True, EM_EXC) != k
 
-    from arborist_experiments.global_classification.microns import features as feat
-    monkeypatch.setitem(feat.DENSITY_CONFIG, "bin_size", 25)
-    assert feature_cache.cohort_key(a, "em_exc", False) != k, "constants must be in the key"
+    coarser = replace(EM_EXC, density_config={**EM_EXC.density_config, "bin_size": 25})
+    assert feature_cache.cohort_key(a, "em_exc", False, coarser) != k, "constants must be in key"
 
 
 def test_key_is_order_independent():
-    assert (feature_cache.cohort_key(_cohort(["3", "1", "2"]), "em_exc", False)
-            == feature_cache.cohort_key(_cohort(["1", "2", "3"]), "em_exc", False))
+    assert (feature_cache.cohort_key(_cohort(["3", "1", "2"]), "em_exc", False, EM_EXC)
+            == feature_cache.cohort_key(_cohort(["1", "2", "3"]), "em_exc", False, EM_EXC))
 
 
 # --- round trip -----------------------------------------------------------------------------
 
 def test_round_trip_is_bit_exact(tmp_path):
     cohort = _cohort(["10", "11", "12"])
-    key = feature_cache.cohort_key(cohort, "em_exc", False)
+    key = feature_cache.cohort_key(cohort, "em_exc", False, EM_EXC)
     fr = _fr(["10", "11", "12"])
     fr.skipped.append(("13", "sholl: ValueError: boom"))
     feature_cache.save(key, "sholl", "dendrite", fr, {"source": "em_exc"}, root=str(tmp_path))
@@ -80,7 +81,7 @@ def test_round_trip_is_bit_exact(tmp_path):
 
 
 def test_miss_returns_none_rather_than_raising(tmp_path):
-    key = feature_cache.cohort_key(_cohort(["1"]), "em_exc", False)
+    key = feature_cache.cohort_key(_cohort(["1"]), "em_exc", False, EM_EXC)
     assert feature_cache.load(key, "sholl", "dendrite", root=str(tmp_path)) is None
 
 
@@ -95,7 +96,7 @@ def test_load_rejects_an_entry_holding_foreign_cells(tmp_path):
 
 
 def test_no_partial_file_is_left_behind(tmp_path):
-    key = feature_cache.cohort_key(_cohort(["1"]), "em_exc", False)
+    key = feature_cache.cohort_key(_cohort(["1"]), "em_exc", False, EM_EXC)
     feature_cache.save(key, "sholl", "dendrite", _fr(["1"]), None, root=str(tmp_path))
     d = feature_cache.cache_dir(key, root=str(tmp_path))
     import os

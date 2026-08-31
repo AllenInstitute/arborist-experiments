@@ -23,7 +23,7 @@ import torch
 
 from arborist_experiments.utils.cells import run_jobs
 from .data_loading import Cohort, build_cohort
-from .modality import filter_cell
+from arborist_experiments.global_classification.extract import filter_cell
 from arborist_experiments.treemoco.augment import PRESETS
 from arborist_experiments.treemoco.model import TreeEncoder
 from arborist_experiments.treemoco.pretrain import PretrainConfig, embed, pretrain

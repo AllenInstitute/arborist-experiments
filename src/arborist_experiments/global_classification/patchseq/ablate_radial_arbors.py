@@ -28,7 +28,8 @@ from arborist_experiments.global_classification.cv import classifier
 from arborist_experiments.global_classification.cv.classifier import run_cv
 from arborist_experiments.global_classification.patchseq.data_loading import build_cohort
 from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
-from arborist_experiments.global_classification.patchseq.radial_arbor_features import extract_radial_arbors
+from arborist_experiments.global_classification.extract import extract_radial_arbors
+from arborist_experiments.global_classification.patchseq.binning import PATCHSEQ
 from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
     log as _log,
@@ -95,7 +96,7 @@ def main(args):
         writer.writerow(["feature_rep", "modality", "metric", "mean", "std",
                          "n_cells", "n_classes", "per_fold"])
         for mod in MODALITIES:
-            fr = extract_radial_arbors(cohort, mod)
+            fr = extract_radial_arbors(cohort, mod, PATCHSEQ)
             n_cells_by_mod[mod] = len(fr.specimen_ids)
             _log(fh, f"=== {mod}: {len(fr.specimen_ids)} cells, {fr.X.shape[1]} features, "
                      f"{len(fr.skipped)} skipped ===")
