@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import copy
 import math
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from .augment import AugmentConfig, augment, identity_view

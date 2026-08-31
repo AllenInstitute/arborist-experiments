@@ -13,8 +13,8 @@ forget gate over the summed child state. That is what the paper writes; it is no
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from .batching import TreeBatch, tree_lstm_forward
 from .tree_features import N_FEATURES

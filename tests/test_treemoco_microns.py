@@ -18,17 +18,30 @@ import numpy as np
 import pytest
 
 from arborist_experiments.global_classification.microns.data_loading import (
-    CACHE_PATH, INH_CACHE_PATH, TYPE_APICAL, TYPE_AXON, TYPE_BASAL, TYPE_SOMA,
-    cell_from_cache, load_cache,
+    CACHE_PATH,
+    INH_CACHE_PATH,
+    TYPE_APICAL,
+    TYPE_AXON,
+    TYPE_BASAL,
+    TYPE_SOMA,
+    cell_from_cache,
+    load_cache,
 )
 from arborist_experiments.global_classification.microns.pretrain_treemoco_microns import (
-    SOURCE_CACHES, build_corpus, feature_names,
+    SOURCE_CACHES,
+    build_corpus,
+    feature_names,
 )
 from arborist_experiments.global_classification.microns.probe_treemoco_microns import (
-    KEY_PREFIX, align_to_cohort,
+    KEY_PREFIX,
+    align_to_cohort,
 )
 from arborist_experiments.treemoco.tree_features import (
-    N_FEATURES, N_FEATURES_TYPED, collapse, n_features, node_features,
+    N_FEATURES,
+    N_FEATURES_TYPED,
+    collapse,
+    n_features,
+    node_features,
 )
 
 N_LIMIT = 200        # cells per cache for the corpus-shape tests

@@ -14,9 +14,9 @@ so nothing about the numbers moves except the solver.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
 import warnings
+from dataclasses import dataclass
 
 import joblib
 import numpy as np
@@ -24,15 +24,18 @@ from sklearn.decomposition import PCA
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-    log_loss, matthews_corrcoef,
+    accuracy_score,
+    balanced_accuracy_score,
+    confusion_matrix,
+    f1_score,
+    log_loss,
+    matthews_corrcoef,
 )
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .gpu_logreg import TorchElasticNetLogReg
-
 
 N_JOBS = max(1, (os.cpu_count() or 1) - 1)
 

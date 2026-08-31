@@ -18,13 +18,27 @@ import numpy as np
 import pytest
 
 from arborist_experiments.global_classification.microns.data_loading import (
-    INH_CACHE_PATH, INH_LABELS_PATH, INH_COARSE_CLASSES, TYPE_APICAL, TYPE_AXON, TYPE_BASAL,
-    TYPE_SOMA, build_inh_cohort, cell_from_cache, class_counts, load_cache,
+    INH_CACHE_PATH,
+    INH_COARSE_CLASSES,
+    INH_LABELS_PATH,
+    TYPE_APICAL,
+    TYPE_AXON,
+    TYPE_BASAL,
+    TYPE_SOMA,
+    build_inh_cohort,
+    cell_from_cache,
+    class_counts,
+    load_cache,
 )
 from arborist_experiments.global_classification.microns.inh_id_map import (
-    ACCEPT_UM, MAP_PATH, SWC_DIR, UPRIGHT_PATH, load_map, load_upright, upright_matrix,
+    ACCEPT_UM,
+    MAP_PATH,
+    SWC_DIR,
+    UPRIGHT_PATH,
+    load_map,
+    load_upright,
+    upright_matrix,
 )
-
 
 N_FIDELITY = 25        # source files re-read for the byte-level fidelity check
 N_INVARIANT = 2000     # cells checked for the Cell contract

@@ -15,10 +15,18 @@ import pytest
 
 from arborist_experiments.global_classification.microns.cache_extract import SOURCE_PATH
 from arborist_experiments.global_classification.microns.data_loading import (
-    CACHE_PATH, LABELS_PATH, EXC_COARSE_CLASSES, TYPE_APICAL, TYPE_BASAL, TYPE_SOMA,
-    build_cohort, cell_from_cache, class_counts, load_cache, load_labels,
+    CACHE_PATH,
+    EXC_COARSE_CLASSES,
+    LABELS_PATH,
+    TYPE_APICAL,
+    TYPE_BASAL,
+    TYPE_SOMA,
+    build_cohort,
+    cell_from_cache,
+    class_counts,
+    load_cache,
+    load_labels,
 )
-
 
 N_FIDELITY = 20        # source rows re-read for the byte-level fidelity check
 N_INVARIANT = 2000     # cells checked for the Cell contract

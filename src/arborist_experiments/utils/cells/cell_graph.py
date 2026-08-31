@@ -16,7 +16,6 @@ a 62 GB machine. CSR-backed it is ~42 B/node.
 from typing import Optional
 
 import numpy as np
-
 from arborist.skeleton_graph import SkeletonGraph
 
 TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL = 1, 2, 3, 4

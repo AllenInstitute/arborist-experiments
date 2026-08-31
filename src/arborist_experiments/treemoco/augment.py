@@ -35,7 +35,6 @@ import numpy as np
 
 from .tree_features import COL_L, COL_SYNTHETIC, CollapsedTree, node_features
 
-
 CORTICAL_AXIS = 1                   # upright y, the pia direction
 
 
@@ -121,7 +120,7 @@ class TreeArrays:
     children: list[list[int]] = field(default_factory=list)
 
     @classmethod
-    def from_tree(cls, tree: CollapsedTree) -> "TreeArrays":
+    def from_tree(cls, tree: CollapsedTree) -> TreeArrays:
         return cls(
             parents=tree.parents.copy(),
             xyz=tree.xyz.copy(),

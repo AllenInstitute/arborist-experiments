@@ -34,9 +34,14 @@ import numpy as np
 
 from .cache_extract import _extend
 from .inh_id_map import (
-    CACHE_DIR, SWC_DIR, MAP_PATH, UPRIGHT_PATH, load_map, load_upright, upright_matrix,
+    CACHE_DIR,
+    MAP_PATH,
+    SWC_DIR,
+    UPRIGHT_PATH,
+    load_map,
+    load_upright,
+    upright_matrix,
 )
-
 
 CACHE_VERSION = 1
 OUT_PATH = os.path.join(CACHE_DIR, "microns_inh_swc.h5")
@@ -75,7 +80,7 @@ def _init_cache(out: h5py.File, theta_deg: float) -> None:
     out.attrs["upright_theta_deg"] = theta_deg
     out.attrs["n_cells_done"] = 0
     out.attrs["complete"] = False
-    kw = dict(compression="gzip", compression_opts=4, shuffle=True)
+    kw = {"compression": "gzip", "compression_opts": 4, "shuffle": True}
     out.create_dataset("specimens", shape=(0,), maxshape=(None,), dtype="S8", **kw)
     out.create_dataset("root_id", shape=(0,), maxshape=(None,), dtype=np.int64, **kw)
     out.create_dataset("source_row", shape=(0,), maxshape=(None,), dtype=np.int64, **kw)
@@ -163,21 +168,20 @@ def extract(swc_dir: str = SWC_DIR, out_path: str = OUT_PATH, map_path: str = MA
 
             xyz_up = xyz @ R.T
             origin = xyz_up[types == TYPE_SOMA].mean(axis=0)
-            recs.append(dict(
-                specimen_id=str(int(m["nucleus_id"])), root_id=root, source_row=row,
-                n_nodes=len(ids), xyz=(xyz_up - origin).astype(np.float32),
-                radius=df["radius"].to_numpy(dtype=np.float32),
-                types=types.astype(np.uint8), parents=parents.astype(np.int32),
-                soma_origin=xyz[types == TYPE_SOMA].mean(axis=0).astype(np.float32),
-                pia_y=float(m["pia_y"]), wm_y=float(m["wm_y"]),
-            ))
+            recs.append({
+                "specimen_id": str(int(m["nucleus_id"])), "root_id": root, "source_row": row,
+                "n_nodes": len(ids), "xyz": (xyz_up - origin).astype(np.float32),
+                "radius": df["radius"].to_numpy(dtype=np.float32),
+                "types": types.astype(np.uint8), "parents": parents.astype(np.int32),
+                "soma_origin": xyz[types == TYPE_SOMA].mean(axis=0).astype(np.float32),
+                "pia_y": float(m["pia_y"]), "wm_y": float(m["wm_y"]),
+            })
 
             if len(recs) >= block or row == len(files) - 1:
                 _append(out, recs)
                 out.attrs["n_cells_done"] = int(out["specimens"].shape[0])
                 out.flush()
-                for r_, rid, why in skips:
-                    skipf.write(f"{r_},{rid},{why}\n")
+                skipf.writelines(f"{r_},{rid},{why}\n" for r_, rid, why in skips)
                 skipf.flush()
                 dt = time.time() - t0
                 msg = (f"rows ..{row + 1}: {out['specimens'].shape[0]} kept, "
@@ -190,8 +194,7 @@ def extract(swc_dir: str = SWC_DIR, out_path: str = OUT_PATH, map_path: str = MA
 
         if recs or skips:
             _append(out, recs)
-            for r_, rid, why in skips:
-                skipf.write(f"{r_},{rid},{why}\n")
+            skipf.writelines(f"{r_},{rid},{why}\n" for r_, rid, why in skips)
             out.attrs["n_cells_done"] = int(out["specimens"].shape[0])
         out.attrs["complete"] = True
         n = int(out["specimens"].shape[0])

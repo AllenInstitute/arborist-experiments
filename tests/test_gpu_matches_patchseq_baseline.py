@@ -29,10 +29,12 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.mark.parametrize("solver", ["gpu"])
 def test_gpu_run_cv_reproduces_patchseq_radial_arbors_full(solver):
+    from arborist_experiments.global_classification.cv.classifier import run_cv
     from arborist_experiments.global_classification.extract import extract_radial_arbors
     from arborist_experiments.global_classification.patchseq.binning import PATCHSEQ
-    from arborist_experiments.global_classification.patchseq.data_loading import build_cohort
-    from arborist_experiments.global_classification.cv.classifier import run_cv
+    from arborist_experiments.global_classification.patchseq.data_loading import (
+        build_cohort,
+    )
 
     cohort = build_cohort(met_path=MET_PATH, swc_path=SWC_PATH, min_class_size=25)
     fr = extract_radial_arbors(cohort, "full", PATCHSEQ)

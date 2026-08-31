@@ -23,13 +23,19 @@ import numpy as np
 
 from arborist_experiments.global_classification.cv import classifier
 from arborist_experiments.global_classification.cv.classifier import run_cv
-from arborist_experiments.global_classification.patchseq.data_loading import build_cohort
+from arborist_experiments.global_classification.patchseq.data_loading import (
+    build_cohort,
+)
+from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
-from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
     log as _log,
+)
+from arborist_experiments.utils.runs import (
     mirror_dir,
+)
+from arborist_experiments.utils.runs import (
     next_version_dir as _next_version_dir,
 )
 

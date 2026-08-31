@@ -47,7 +47,6 @@ import os
 
 import numpy as np
 
-
 CACHE_DIR = "/root/capsule/scratch/microns_cache/v1"
 SWC_DIR = "/root/capsule/data/MICrONS_inh_swc"
 EXC_CACHE = os.path.join(CACHE_DIR, "em_exc_swc.h5")
@@ -67,8 +66,14 @@ TRIM_MAD = 3.0
 TRIM_ITERS = 12
 
 __all__ = [
-    "fetch_manifest", "read_soma_nodes", "geometric_join", "derive_upright",
-    "build_map", "load_map", "load_upright", "upright_matrix",
+    "build_map",
+    "derive_upright",
+    "fetch_manifest",
+    "geometric_join",
+    "load_map",
+    "load_upright",
+    "read_soma_nodes",
+    "upright_matrix",
 ]
 
 
@@ -187,7 +192,7 @@ def _robust_plane(xy: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, dict]:
         keep = np.isfinite(r) & (np.abs(r - med) <= TRIM_MAD * max(mad, 1e-9))
     r = y - A @ coef
     return coef, {
-        "n_kept": int(keep.sum()), "n_total": int(len(y)),
+        "n_kept": int(keep.sum()), "n_total": len(y),
         "norm_ab": float(np.hypot(coef[0], coef[1])),
         "theta_deg": float(np.degrees(np.arctan2(coef[0], coef[1]))),
         "rms_resid_um": float(np.sqrt((r[keep] ** 2).mean())),
@@ -268,7 +273,6 @@ def upright_matrix(theta_deg: float) -> np.ndarray:
 def build_map(swc_dir: str = SWC_DIR, exc_cache: str = EXC_CACHE,
               manifest: str = MANIFEST_LOCAL, map_path: str = MAP_PATH,
               upright_path: str = UPRIGHT_PATH, log=print) -> None:
-    import pandas as pd
 
     fetch_manifest(manifest, log=log)
     roots, soma = read_soma_nodes(swc_dir, log=log)

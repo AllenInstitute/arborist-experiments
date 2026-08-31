@@ -9,22 +9,20 @@ swap in a pruned-graph builder for every extractor at once, which fork carries i
 """
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
-import logging
-from typing import Optional
-
-import numpy as np
-import pandas as pd
 
 import networkx as nx
-from morphopy.neurontree.NeuronTree import NeuronTree
+import numpy as np
+import pandas as pd
 from morphopy.computation import feature_presentation
 from morphopy.computation.feature_presentation import (
     compute_density_maps,
     compute_morphometric_statistics,
     get_persistence,
 )
+from morphopy.neurontree.NeuronTree import NeuronTree
 from morphopy.neurontree.utils import angle_between
 from persim import PersistenceImager
 
@@ -90,10 +88,10 @@ def _empty_safe_reductions():
         feature_presentation.np = original
 
 from arborist_experiments.utils.cells import CellGraph, Cohort, run_jobs
+
 from .binning import BinningConfig
 from .modality import filter_cell
 from .swc_adapter import cell_to_neurontree
-
 
 log = logging.getLogger(__name__)
 
@@ -191,7 +189,7 @@ def _density_projection(nt, cfg: BinningConfig, axis: str) -> np.ndarray:
 def _collect_fixed_width(results, label: str, name_fn) -> FeatureResult:
     rows: list[tuple[str, np.ndarray]] = []
     skipped: list[tuple[str, str]] = []
-    names: Optional[list[str]] = None
+    names: list[str] | None = None
     for sid, v, _local_names, err in results:
         if err is not None:
             skipped.append((sid, err)); continue
@@ -243,7 +241,7 @@ def extract_morphometrics(cohort: Cohort, modality: str, cfg: BinningConfig) -> 
     # has one signature.
     rows: list[tuple[str, np.ndarray]] = []
     skipped: list[tuple[str, str]] = []
-    names: Optional[list[str]] = None
+    names: list[str] | None = None
     for sid, v, local_names, err in run_jobs(cohort, _job_morphometrics, modality):
         if err is not None:
             skipped.append((sid, err)); continue

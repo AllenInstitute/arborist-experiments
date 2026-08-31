@@ -30,11 +30,11 @@ from .radial_arbor_features import (
 from .swc_adapter import cell_to_neurontree, cell_to_swc_df
 
 __all__ = [
-    "BinningConfig",
-    "FeatureResult",
     "MODALITY_GROUPS",
     "MODALITY_TYPES",
     "STRUCTURE_GROUPINGS",
+    "BinningConfig",
+    "FeatureResult",
     "cell_to_neurontree",
     "cell_to_swc_df",
     "extract_density",

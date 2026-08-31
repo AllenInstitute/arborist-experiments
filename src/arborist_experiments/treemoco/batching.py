@@ -68,7 +68,7 @@ class TreeBatch:
     roots: torch.Tensor
     n_trees: int
 
-    def to(self, device) -> "TreeBatch":
+    def to(self, device) -> TreeBatch:
         return TreeBatch(
             x=self.x.to(device, non_blocking=True),
             parent=self.parent.to(device, non_blocking=True),

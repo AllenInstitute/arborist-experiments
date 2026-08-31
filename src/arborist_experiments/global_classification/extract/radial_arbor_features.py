@@ -34,11 +34,17 @@ from __future__ import annotations
 import numpy as np
 
 from arborist_experiments.utils.cells import (
-    CellGraph, Cohort, TYPE_APICAL, TYPE_AXON, TYPE_BASAL, TYPE_SOMA, run_jobs,
+    TYPE_APICAL,
+    TYPE_AXON,
+    TYPE_BASAL,
+    TYPE_SOMA,
+    CellGraph,
+    Cohort,
+    run_jobs,
 )
+
 from .binning import BinningConfig
 from .features import FeatureResult
-
 
 STRUCTURE_GROUPINGS = {
     "axon":     [TYPE_AXON],

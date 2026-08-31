@@ -28,32 +28,49 @@ import time
 
 import numpy as np
 import torch
-import torch.nn as nn
 from sklearn.metrics import (
-    accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score, log_loss,
+    accuracy_score,
+    balanced_accuracy_score,
+    confusion_matrix,
+    f1_score,
+    log_loss,
     matthews_corrcoef,
 )
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from arborist_experiments.global_classification.cv import classifier
 from arborist_experiments.global_classification.cv.classifier import CVResult, run_cv
-from .data_loading import Cohort, build_cohort, load_precomputed_morphometrics
-from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
-from .probe_path_encodings import load_pooled
 from arborist_experiments.global_classification.rows import write_rows
-from arborist_experiments.utils.runs import (
-    log as _log,
-    mirror_dir,
-    next_version_dir as _next_version_dir,
+from arborist_experiments.treemoco.augment import (
+    PRESETS,
+    AugmentConfig,
+    augment,
+    identity_view,
 )
-from arborist_experiments.treemoco.augment import PRESETS, AugmentConfig, augment, identity_view
 from arborist_experiments.treemoco.batching import collate
 from arborist_experiments.treemoco.model import TreeClassifier, TreeEncoder
 from arborist_experiments.treemoco.pretrain import PretrainConfig, embed, pretrain
-from .pretrain_treemoco import collapse_cohort
-from arborist_experiments.treemoco.tree_features import N_FEATURES, N_FEATURES_TYPED, CollapsedTree
+from arborist_experiments.treemoco.tree_features import (
+    N_FEATURES,
+    N_FEATURES_TYPED,
+    CollapsedTree,
+)
+from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
+from arborist_experiments.utils.runs import (
+    log as _log,
+)
+from arborist_experiments.utils.runs import (
+    mirror_dir,
+)
+from arborist_experiments.utils.runs import (
+    next_version_dir as _next_version_dir,
+)
 
+from .data_loading import Cohort, build_cohort, load_precomputed_morphometrics
+from .pretrain_treemoco import collapse_cohort
+from .probe_path_encodings import load_pooled
 
 REP_NAME = "treemoco"
 
@@ -324,7 +341,7 @@ def main(args):
                    "per_fold_epochs": cfg.epochs}, f, indent=2, sort_keys=True)
 
     if args.mode == "frozen":
-        X_all, ids, names, attrs = load_pooled(args.artifact)
+        X_all, ids, names, _attrs = load_pooled(args.artifact)
         _log(fh, f"  pooled X {X_all.shape}, {len(ids)} cells, {len(names)} features")
         row_of = {sid: i for i, sid in enumerate(ids)}
         keep = [i for i, c in enumerate(cohort.cells) if c.specimen_id in row_of]

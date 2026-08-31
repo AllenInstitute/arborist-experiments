@@ -29,8 +29,10 @@ import os
 
 import numpy as np
 
-from arborist_experiments.global_classification.extract import BinningConfig, FeatureResult
-
+from arborist_experiments.global_classification.extract import (
+    BinningConfig,
+    FeatureResult,
+)
 
 CACHE_ROOT = "/root/capsule/scratch/features"
 

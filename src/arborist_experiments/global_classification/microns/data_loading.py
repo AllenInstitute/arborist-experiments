@@ -22,16 +22,21 @@ Differences from the Patch-seq loader that a reader coming from there will look 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 
 import h5py
 import numpy as np
 
 from arborist_experiments.global_classification.patchseq.data_loading import (
-    Cell, CellGraph, Cohort, TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL,
+    TYPE_APICAL,
+    TYPE_AXON,
+    TYPE_BASAL,
+    TYPE_SOMA,
+    Cell,
+    CellGraph,
+    Cohort,
 )
-
 
 CACHE_DIR = "/root/capsule/scratch/microns_cache/v1"
 CACHE_PATH = os.path.join(CACHE_DIR, "em_exc_swc.h5")
@@ -51,10 +56,27 @@ INH_COARSE_CLASSES = ("AltBasket", "AltDTC", "ChC", "DTC", "ITC", "ITCperi", "L1
                       "NGC", "NMC", "PV")
 
 __all__ = [
-    "Cell", "CellGraph", "Cohort", "SwcCache", "TYPE_SOMA", "TYPE_AXON", "TYPE_BASAL", "TYPE_APICAL",
-    "EXC_COARSE_CLASSES", "INH_COARSE_CLASSES", "load_cache", "cell_from_cache", "load_labels",
-    "build_cohort", "build_inh_cohort", "build_cohort_from_source", "SOURCES",
-    "subsample_proportional", "subsample_per_class", "class_counts", "soma_depth_features",
+    "EXC_COARSE_CLASSES",
+    "INH_COARSE_CLASSES",
+    "SOURCES",
+    "TYPE_APICAL",
+    "TYPE_AXON",
+    "TYPE_BASAL",
+    "TYPE_SOMA",
+    "Cell",
+    "CellGraph",
+    "Cohort",
+    "SwcCache",
+    "build_cohort",
+    "build_cohort_from_source",
+    "build_inh_cohort",
+    "cell_from_cache",
+    "class_counts",
+    "load_cache",
+    "load_labels",
+    "soma_depth_features",
+    "subsample_per_class",
+    "subsample_proportional",
 ]
 
 

@@ -12,18 +12,20 @@ Two non-obvious choices:
     on a comparable footing with the log-loss of the discriminative rows.
 """
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from sklearn.metrics import (
-    accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score,
-    log_loss, matthews_corrcoef,
+    accuracy_score,
+    balanced_accuracy_score,
+    confusion_matrix,
+    f1_score,
+    log_loss,
+    matthews_corrcoef,
 )
 from sklearn.model_selection import StratifiedKFold
 
 from arborist_experiments.global_classification.cv.classifier import CVResult
 from arborist_experiments.global_classification.extract import filter_cell
-
 
 COV_RIDGE = 1e-3
 TEMPERATURES = (0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0)
@@ -122,7 +124,7 @@ def run_gaussian_cv(
     outer_k: int = 5,
     inner_k: int = 3,
     seed: int = 0,
-) -> tuple[Optional[CVResult], list[tuple[str, str]]]:
+) -> tuple[CVResult | None, list[tuple[str, str]]]:
     clouds, y_raw, skipped = build_clouds(cohort, modality)
     if len(clouds) < 30:
         return None, skipped

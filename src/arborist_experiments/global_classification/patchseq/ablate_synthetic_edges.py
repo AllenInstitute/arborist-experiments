@@ -41,20 +41,29 @@ import networkx as nx
 import numpy as np
 
 from arborist_experiments.global_classification.cv import classifier
-from arborist_experiments.global_classification.extract import features as F
 from arborist_experiments.global_classification.cv.classifier import run_cv
-from arborist_experiments.global_classification.patchseq.data_loading import Cell, build_cohort
-from arborist_experiments.global_classification.extract import cell_to_neurontree, filter_cell
+from arborist_experiments.global_classification.extract import (
+    cell_to_neurontree,
+    filter_cell,
+)
+from arborist_experiments.global_classification.extract import features as F
 from arborist_experiments.global_classification.patchseq.binning import PATCHSEQ
+from arborist_experiments.global_classification.patchseq.data_loading import (
+    Cell,
+    build_cohort,
+)
+from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
-from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
     log as _log,
+)
+from arborist_experiments.utils.runs import (
     mirror_dir,
+)
+from arborist_experiments.utils.runs import (
     next_version_dir as _next_version_dir,
 )
-
 
 EXTRACTORS = {
     "density_xy":              F.extract_density_xy,
@@ -151,15 +160,15 @@ def _synthetic_inventory(cohort, modality: str) -> dict:
 
 
 def _write_desc(out_dir: str, cohort, inv: dict, summary: dict) -> None:
-    lines = ["Rerun of the morphopy-based representations with synthetic (fabricated) "
-             "soma-to-fragment edges removed.", ""]
+    lines = [("Rerun of the morphopy-based representations with synthetic (fabricated) "
+             "soma-to-fragment edges removed."), ""]
     lines += ["* Parameters",
               f"    modality = {MODALITY}",
               f"    arms = {ARMS!r}",
               f"    outer_k = {OUTER_K}", f"    inner_k = {INNER_K}",
               f"    seed = {SEED}", f"    min_class_size = {MIN_CLASS_SIZE}",
               f"    n_classes = {len(cohort.label_names)}",
-              f"    label = MET.meta/subclass", f"    coordinates = swc_upright",
+              "    label = MET.meta/subclass", "    coordinates = swc_upright",
               f"    met_path = {MET_PATH}", f"    swc_path = {SWC_PATH}", ""]
     lines += ["* Arms",
               "    prune    -- synthetic edges removed from the graph, forest kept. Exact for",
@@ -174,8 +183,8 @@ def _write_desc(out_dir: str, cohort, inv: dict, summary: dict) -> None:
               "                here as controls against the prune arm.", ""]
     lines += [f"* {MODALITY} edge inventory",
               f"    edges = {inv['n_edges']:,}",
-              f"    synthetic = {inv['n_synthetic']:,} "
-              f"({100 * inv['n_synthetic'] / max(1, inv['n_edges']):.2f}%)",
+              (f"    synthetic = {inv['n_synthetic']:,} "
+              f"({100 * inv['n_synthetic'] / max(1, inv['n_edges']):.2f}%)"),
               f"    cells with >=1 synthetic edge = {inv['n_cells_fragmented']}", ""]
     lines += ["* Classifier (identical to run_benchmark.py)",
               "    StandardScaler -> PCA(min(n/2, 200, n_features)) -> elastic-net LogisticRegression",

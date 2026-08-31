@@ -32,37 +32,49 @@ from types import SimpleNamespace
 import h5py
 import numpy as np
 import torch
-import torch.nn as nn
 from sklearn.metrics import (
-    accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score, log_loss,
+    accuracy_score,
+    balanced_accuracy_score,
+    confusion_matrix,
+    f1_score,
+    log_loss,
     matthews_corrcoef,
 )
 from sklearn.model_selection import StratifiedKFold, train_test_split
+from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from arborist_experiments.global_classification.cv import persistence
 from arborist_experiments.global_classification.cv.classifier import CVResult, run_cv
-from arborist_experiments.utils.cells.plots import plot_confusion
+from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.treemoco.augment import (
-    PRESETS, AugmentConfig, augment, identity_view,
+    PRESETS,
+    AugmentConfig,
+    augment,
+    identity_view,
 )
 from arborist_experiments.treemoco.batching import collate
 from arborist_experiments.treemoco.model import (
-    TreeClassifier, TreeEncoder,
+    TreeClassifier,
+    TreeEncoder,
 )
 from arborist_experiments.treemoco.tree_features import (
-    CollapsedTree, collapse,
+    CollapsedTree,
+    collapse,
 )
-
-from .data_loading import build_cohort_from_source, class_counts, subsample_per_class
 from arborist_experiments.utils.cells import run_jobs
-from arborist_experiments.global_classification.rows import write_rows
+from arborist_experiments.utils.cells.plots import plot_confusion
 from arborist_experiments.utils.runs import (
     log as _log,
+)
+from arborist_experiments.utils.runs import (
     mirror_dir,
+)
+from arborist_experiments.utils.runs import (
     next_version_dir as _next_version_dir,
 )
 
+from .data_loading import build_cohort_from_source, class_counts, subsample_per_class
 
 REP_NAME = "treemoco_joint"
 
@@ -261,8 +273,8 @@ def run_finetune(trees, y, class_names, state, aug, d_in, ckpt_prefix,
 
 
 def _write_desc(out_dir: str, cfg: dict, stats: dict) -> None:
-    lines = [f"TreeMoCo probe: {cfg['mode']} mode on the {cfg['source']} cohort, from a joint "
-             "excitatory+inhibitory pretraining artifact.", ""]
+    lines = [(f"TreeMoCo probe: {cfg['mode']} mode on the {cfg['source']} cohort, from a joint "
+             "excitatory+inhibitory pretraining artifact."), ""]
     lines += ["* Parameters"]
     for k, v in cfg.items():
         lines.append(f"    {k} = {v!r}")

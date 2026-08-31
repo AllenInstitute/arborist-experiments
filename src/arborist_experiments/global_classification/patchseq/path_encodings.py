@@ -27,23 +27,29 @@ import h5py
 import networkx as nx
 import numpy as np
 import torch
-
 from arborist.data.datasets import collate_curves
 from arborist.models.curve_transformer import CurveAutoencoder
 
+from arborist_experiments.global_classification.extract.radial_arbor_features import (
+    STRUCTURE_GROUPINGS,
+    _real_edges,
+)
 from arborist_experiments.global_classification.patchseq.data_loading import (
-    Cohort, TYPE_SOMA, _iter_swc, build_cohort,
+    TYPE_SOMA,
+    Cohort,
+    _iter_swc,
+    build_cohort,
 )
 from arborist_experiments.utils.cells import run_jobs
-from arborist_experiments.global_classification.extract.radial_arbor_features import (
-    STRUCTURE_GROUPINGS, _real_edges,
-)
 from arborist_experiments.utils.runs import (
     log as _log,
+)
+from arborist_experiments.utils.runs import (
     mirror_file,
+)
+from arborist_experiments.utils.runs import (
     next_version_dir as _next_version_dir,
 )
-
 
 GROUP_NAMES = ["axon", "dendrite"]
 

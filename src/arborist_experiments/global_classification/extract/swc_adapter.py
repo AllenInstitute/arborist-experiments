@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-
 from morphopy.neurontree.NeuronTree import NeuronTree
 
 from arborist_experiments.utils.cells import CellGraph

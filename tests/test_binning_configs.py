@@ -23,9 +23,11 @@ import numpy as np
 import pytest
 
 from arborist_experiments.global_classification.microns import feature_cache
-from arborist_experiments.global_classification.microns.binning import EM_EXC, MICRONS_INH
+from arborist_experiments.global_classification.microns.binning import (
+    EM_EXC,
+    MICRONS_INH,
+)
 from arborist_experiments.global_classification.patchseq.binning import PATCHSEQ
-
 
 # The one published feature cache directory is
 # `em_exc_n160_21e1abc7f7ce_r0_c2a91b6b7`. If this digest moves, every matrix under
@@ -113,7 +115,9 @@ def test_inh_ranges_contain_every_modality_envelope(modality):
 
 
 def test_bin_edges_are_multiples_of_the_bin_size():
-    from arborist_experiments.global_classification.microns.derive_constants import BIN_SIZE
+    from arborist_experiments.global_classification.microns.derive_constants import (
+        BIN_SIZE,
+    )
 
     for lo, hi in _ranges(MICRONS_INH).values():
         assert lo % BIN_SIZE == 0 and hi % BIN_SIZE == 0

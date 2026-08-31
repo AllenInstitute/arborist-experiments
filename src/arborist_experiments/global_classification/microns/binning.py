@@ -18,14 +18,13 @@ import numpy as np
 
 from arborist_experiments.global_classification.extract import BinningConfig
 
-
 SHOLL_RADII = list(np.arange(10.0, 610.0, 10.0))
 
-PERSIM_KWARGS = dict(
-    birth_range=(0.0, 500.0),
-    pers_range=(0.0, 500.0),
-    pixel_size=25.0,
-)
+PERSIM_KWARGS = {
+    "birth_range": (0.0, 500.0),
+    "pers_range": (0.0, 500.0),
+    "pixel_size": 25.0,
+}
 
 # Re-derived on all 49803 exc cells / 93.4M soma+dendrite nodes: x -150.3..148.6, y -179.9..454.7,
 # z -137.0..132.4. The box is smaller than Patch-seq's in x and y and larger in z, so feature

@@ -15,7 +15,6 @@ import argparse
 import csv
 import os
 
-
 # scratch/benchmarks/v2, the Patch-seq run this port is compared against (n=1556, 13 classes).
 # precomputed_morphometrics (0.830) is listed for completeness but has no MICrONS counterpart.
 PATCHSEQ_BA = {
@@ -85,8 +84,8 @@ def report(runs: list[dict], reference: str = "dendrite") -> str:
     head = f"{'representation':26s} {'PS':>6s} {'PS_cc':>6s}"
     for run in runs:
         head += f" | {'n=' + str(run['n_cells']):>15s}"
-    lines = [f"Patch-seq reference column: {reference} modality, n=1556, "
-             f"{PATCHSEQ_N_CLASSES} classes (chance {1 / PATCHSEQ_N_CLASSES:.3f})",
+    lines = [(f"Patch-seq reference column: {reference} modality, n=1556, "
+             f"{PATCHSEQ_N_CLASSES} classes (chance {1 / PATCHSEQ_N_CLASSES:.3f})"),
              "PS_cc and the run columns are chance-corrected (BA - 1/K)/(1 - 1/K); raw BA in ().",
              "", head, "-" * len(head)]
 

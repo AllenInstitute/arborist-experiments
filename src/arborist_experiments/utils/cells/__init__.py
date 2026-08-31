@@ -6,22 +6,22 @@ unmovable.
 """
 
 from .cell_graph import (
-    CellGraph,
     TYPE_APICAL,
     TYPE_AXON,
     TYPE_BASAL,
     TYPE_SOMA,
+    CellGraph,
 )
 from .cohort import Cohort
 from .jobs import N_WORKERS, run_jobs
 
 __all__ = [
-    "CellGraph",
-    "Cohort",
     "N_WORKERS",
     "TYPE_APICAL",
     "TYPE_AXON",
     "TYPE_BASAL",
     "TYPE_SOMA",
+    "CellGraph",
+    "Cohort",
     "run_jobs",
 ]

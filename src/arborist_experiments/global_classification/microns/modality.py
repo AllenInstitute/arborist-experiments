@@ -21,7 +21,6 @@ from __future__ import annotations
 
 from arborist_experiments.global_classification.extract import MODALITY_TYPES
 
-
 # Which modalities are meaningful depends on the cohort, not on `filter_cell`, so the gate is
 # keyed by source and enforced by the driver before extraction starts. `full`/`axon` are real on
 # the inhibitory cells (66.5% have axon) and meaningless on the excitatory ones (0.43%);

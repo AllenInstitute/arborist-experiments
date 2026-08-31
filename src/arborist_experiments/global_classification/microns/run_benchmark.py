@@ -27,30 +27,49 @@ import numpy as np
 
 from arborist_experiments.global_classification.cv import persistence
 from arborist_experiments.global_classification.cv.classifier import GRID, run_cv
-from arborist_experiments.global_classification.patchseq.gaussian_baseline import run_gaussian_cv
-from arborist_experiments.utils.cells import N_WORKERS
-from arborist_experiments.utils.cells.plots import (
-    plot_confusion, plot_embedding,
-)
 from arborist_experiments.global_classification.extract import (
     MODALITY_TYPES,
-    extract_density_xy, extract_density_xz, extract_density_yz,
-    extract_morphometrics, extract_persistence_image, extract_radial_arbors, extract_sholl,
+    extract_density_xy,
+    extract_density_xz,
+    extract_density_yz,
+    extract_morphometrics,
+    extract_persistence_image,
+    extract_radial_arbors,
+    extract_sholl,
 )
-from . import feature_cache
-from .binning import CONFIGS
-from .data_loading import (
-    CACHE_PATH, INH_CACHE_PATH, INH_LABELS_PATH, LABELS_PATH, build_cohort_from_source,
-    class_counts, soma_depth_features, subsample_per_class, subsample_proportional,
+from arborist_experiments.global_classification.patchseq.gaussian_baseline import (
+    run_gaussian_cv,
 )
-from .modality import UNAVAILABLE, check_modality
 from arborist_experiments.global_classification.rows import write_rows
+from arborist_experiments.utils.cells import N_WORKERS
+from arborist_experiments.utils.cells.plots import (
+    plot_confusion,
+    plot_embedding,
+)
 from arborist_experiments.utils.runs import (
     log as _log,
+)
+from arborist_experiments.utils.runs import (
     mirror_dir,
+)
+from arborist_experiments.utils.runs import (
     next_version_dir as _next_version_dir,
 )
 
+from . import feature_cache
+from .binning import CONFIGS
+from .data_loading import (
+    CACHE_PATH,
+    INH_CACHE_PATH,
+    INH_LABELS_PATH,
+    LABELS_PATH,
+    build_cohort_from_source,
+    class_counts,
+    soma_depth_features,
+    subsample_per_class,
+    subsample_proportional,
+)
+from .modality import UNAVAILABLE, check_modality
 
 # Per-source defaults. `--cache`/`--labels` override, so a smoke cache can be pointed at.
 SOURCE_DEFAULTS = {
@@ -138,10 +157,11 @@ def _write_desc(out_dir, cohort, rep_list, mod_list, outer_k, inner_k, args, n_c
               f"    scored = {mod_list!r}",
               f"    defined = {sorted(MODALITY_TYPES)}",
               f"    unavailable on {args.source} = {sorted(UNAVAILABLE.get(args.source, {}))}",
-              f"    compartment prevalence in this cohort: axon {axon_cells}/{len(cohort)} "
-              f"({100 * axon_cells / max(1, len(cohort)):.2f}%), "
-              f"apical {apical_cells}/{len(cohort)} "
-              f"({100 * apical_cells / max(1, len(cohort)):.2f}%)"]
+              (f"    compartment prevalence in this cohort: "
+               f"axon {axon_cells}/{len(cohort)} "
+               f"({100 * axon_cells / max(1, len(cohort)):.2f}%), "
+               f"apical {apical_cells}/{len(cohort)} "
+               f"({100 * apical_cells / max(1, len(cohort)):.2f}%)")]
     for m, why in sorted(UNAVAILABLE.get(args.source, {}).items()):
         lines.append(f"    {m!r}: {why}")
     lines.append("")
@@ -206,10 +226,12 @@ def main(args):
 
     _log(fh, "Building cohort...")
     if args.source == "em_exc":
-        build_kwargs = dict(exc_only=args.exc_only)
+        build_kwargs = {"exc_only": args.exc_only}
     else:
-        build_kwargs = dict(inh_only=args.inh_only,
-                            require_types=tuple(args.require_types or ()) or None)
+        build_kwargs = {
+            "inh_only": args.inh_only,
+            "require_types": tuple(args.require_types or ()) or None,
+        }
     cohort = build_cohort_from_source(
         args.source,
         cache_path=args.cache, labels_path=args.labels, label_column=args.label_column,
@@ -408,7 +430,7 @@ def _plot_embedding_capped(X, y, class_names, out_dir, stem, fh) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", default="em_exc", choices=sorted(SOURCE_DEFAULTS),
-                       help="Which cohort. Never combined; one run each.")
+                        help="Which cohort. Never combined; one run each.")
     parser.add_argument("--smoke", action="store_true", help="Small fast run to check plumbing.")
     parser.add_argument("--representations", nargs="+", default=None)
     parser.add_argument("--modalities", nargs="+", default=None)

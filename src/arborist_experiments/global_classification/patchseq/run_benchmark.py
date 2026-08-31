@@ -22,25 +22,38 @@ from collections import defaultdict
 import numpy as np
 
 from arborist_experiments.global_classification.cv import classifier, persistence
+from arborist_experiments.global_classification.cv.classifier import run_cv
 from arborist_experiments.global_classification.extract import (
-    extract_density_xy, extract_density_xz, extract_density_yz,
-    extract_morphometrics, extract_persistence_image, extract_radial_arbors, extract_sholl,
+    extract_density_xy,
+    extract_density_xz,
+    extract_density_yz,
+    extract_morphometrics,
+    extract_persistence_image,
+    extract_radial_arbors,
+    extract_sholl,
 )
 from arborist_experiments.global_classification.patchseq.binning import PATCHSEQ
 from arborist_experiments.global_classification.patchseq.data_loading import (
-    Cohort, build_cohort, extract_precomputed_morphometrics, load_precomputed_morphometrics,
+    Cohort,
+    build_cohort,
+    extract_precomputed_morphometrics,
+    load_precomputed_morphometrics,
 )
-from arborist_experiments.global_classification.cv.classifier import run_cv
-from arborist_experiments.global_classification.patchseq.gaussian_baseline import run_gaussian_cv
+from arborist_experiments.global_classification.patchseq.gaussian_baseline import (
+    run_gaussian_cv,
+)
+from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.cells import N_WORKERS
 from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
-from arborist_experiments.global_classification.rows import write_rows
 from arborist_experiments.utils.runs import (
     log as _log,
+)
+from arborist_experiments.utils.runs import (
     mirror_dir,
+)
+from arborist_experiments.utils.runs import (
     next_version_dir as _next_version_dir,
 )
-
 
 EXTRACTORS = {
     "density_xy":               ("morph", extract_density_xy),
@@ -119,7 +132,7 @@ def _write_desc(out_dir: str, cohort, rep_list, mod_list, outer_k, inner_k, smok
               f"    seed = {SEED}", f"    min_class_size = {MIN_CLASS_SIZE}",
               f"    solver = {solver}   dtype = {dtype}",
               f"    n_cells = {len(cohort)}", f"    n_classes = {len(cohort.label_names)}",
-              f"    label = MET.meta/subclass", f"    coordinates = swc_upright",
+              "    label = MET.meta/subclass", "    coordinates = swc_upright",
               f"    met_path = {MET_PATH}", f"    swc_path = {SWC_PATH}", ""]
     counts = defaultdict(int)
     for lbl in cohort.labels:

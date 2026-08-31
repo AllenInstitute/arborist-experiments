@@ -44,7 +44,6 @@ import numpy as np
 
 from arborist_experiments.utils.cells import CellGraph
 
-
 N_POLYLINE = 33                     # stored points per branch; L and C are measured on these
 N_RESAMPLE = 9                      # points F_E is built from; 8 edge vectors -> F_E in R^24
 FE_STRIDE = (N_POLYLINE - 1) // (N_RESAMPLE - 1)

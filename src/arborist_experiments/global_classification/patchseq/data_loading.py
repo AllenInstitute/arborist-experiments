@@ -1,15 +1,14 @@
-from typing import Optional
 
 import h5py
 import numpy as np
 
 from arborist_experiments.utils.cells import (
-    CellGraph,
-    Cohort,
     TYPE_APICAL,
     TYPE_AXON,
     TYPE_BASAL,
     TYPE_SOMA,
+    CellGraph,
+    Cohort,
 )
 
 # Re-exported so the 8 modules that import `Cell`, `Cohort` and the TYPE_*
@@ -19,13 +18,13 @@ from arborist_experiments.utils.cells import (
 Cell = CellGraph
 
 __all__ = [
-    "Cell",
-    "CellGraph",
-    "Cohort",
     "TYPE_APICAL",
     "TYPE_AXON",
     "TYPE_BASAL",
     "TYPE_SOMA",
+    "Cell",
+    "CellGraph",
+    "Cohort",
     "build_cohort",
     "extract_precomputed_morphometrics",
     "load_precomputed_morphometrics",
@@ -151,7 +150,7 @@ def build_cohort(
     met_path: str,
     swc_path: str,
     min_class_size: int = 25,
-    allowed_ids: Optional[set[str]] = None,
+    allowed_ids: set[str] | None = None,
 ) -> Cohort:
     subclass_by_id = load_subclass_labels(met_path)
 

@@ -21,12 +21,15 @@ import numpy as np
 import pytest
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 
-from arborist_experiments.global_classification.microns import feature_cache
 from arborist_experiments.global_classification.cv import persistence
 from arborist_experiments.global_classification.cv.classifier import (
-    GRID, CVResult, boundary_hits, run_cv,
+    GRID,
+    CVResult,
+    boundary_hits,
+    run_cv,
 )
 from arborist_experiments.global_classification.extract import FeatureResult
+from arborist_experiments.global_classification.microns import feature_cache
 from arborist_experiments.global_classification.microns.binning import EM_EXC
 
 
@@ -117,7 +120,7 @@ def cv_and_data():
 
 
 def test_run_cv_returns_a_complete_oof_record(cv_and_data):
-    cv, X, y = cv_and_data
+    cv, _X, y = cv_and_data
     assert isinstance(cv, CVResult)
     assert cv.oof_proba.shape == (len(y), cv.n_classes)
     # Outer test folds are disjoint and cover every sample, so nothing may stay unassigned.
@@ -129,7 +132,7 @@ def test_run_cv_returns_a_complete_oof_record(cv_and_data):
 
 def test_every_reported_number_is_recomputable_from_the_oof(cv_and_data):
     """The point of saving the OOF: the metrics row and both confusion views follow from it."""
-    cv, X, y = cv_and_data
+    cv, _X, y = cv_and_data
     for k in range(3):
         m = cv.oof_fold == k
         assert cv.metrics["balanced_accuracy"][k] == pytest.approx(
@@ -143,7 +146,7 @@ def test_every_reported_number_is_recomputable_from_the_oof(cv_and_data):
 
 
 def test_write_oof_round_trips_and_stays_joinable(cv_and_data, tmp_path):
-    cv, X, y = cv_and_data
+    cv, _X, y = cv_and_data
     ids = [f"cell{i}" for i in range(len(y))]
     path = str(tmp_path / "oof.npz")
     persistence.write_oof(path, cv.oof_proba, y, cv.oof_fold, ids, cv.class_names)
@@ -155,7 +158,7 @@ def test_write_oof_round_trips_and_stays_joinable(cv_and_data, tmp_path):
 
 
 def test_write_oof_refuses_a_misaligned_id_list(cv_and_data, tmp_path):
-    cv, X, y = cv_and_data
+    cv, _X, y = cv_and_data
     with pytest.raises(ValueError, match="length mismatch"):
         persistence.write_oof(str(tmp_path / "o.npz"), cv.oof_proba, y, cv.oof_fold,
                               ["only_one"], cv.class_names)
@@ -165,7 +168,7 @@ def test_write_oof_refuses_a_misaligned_id_list(cv_and_data, tmp_path):
 
 
 def test_write_confusion_keeps_the_folds_apart(cv_and_data, tmp_path):
-    cv, X, y = cv_and_data
+    cv, _X, _y = cv_and_data
     path = str(tmp_path / "conf.csv")
     persistence.write_confusion(path, cv.confusion, cv.class_names,
                                 per_fold=cv.confusion_per_fold)

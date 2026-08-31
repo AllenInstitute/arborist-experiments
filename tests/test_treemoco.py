@@ -316,7 +316,7 @@ def test_swap_sibling_preserves_node_count():
 def test_upright_preset_keeps_the_pia_axis_and_paper_does_not():
     rng = np.random.default_rng(19)
     trees = [cohort_like_tree(rng) for _ in range(12)]
-    geometry_only = dict(p_drop_subtree=0.0, p_skip_parent=0.0, p_swap_sibling=0.0, p_mask=0.0)
+    geometry_only = {"p_drop_subtree": 0.0, "p_skip_parent": 0.0, "p_swap_sibling": 0.0, "p_mask": 0.0}
 
     upright = []
     cfg = ag.upright_preset(**geometry_only)

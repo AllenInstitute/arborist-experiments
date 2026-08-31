@@ -26,17 +26,22 @@ import numpy as np
 
 from arborist_experiments.global_classification.cv import classifier
 from arborist_experiments.global_classification.cv.classifier import run_cv
-from arborist_experiments.global_classification.patchseq.data_loading import build_cohort
-from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
 from arborist_experiments.global_classification.extract import extract_radial_arbors
 from arborist_experiments.global_classification.patchseq.binning import PATCHSEQ
+from arborist_experiments.global_classification.patchseq.data_loading import (
+    build_cohort,
+)
 from arborist_experiments.global_classification.rows import write_rows
+from arborist_experiments.utils.cells.plots import plot_confusion, plot_embedding
 from arborist_experiments.utils.runs import (
     log as _log,
+)
+from arborist_experiments.utils.runs import (
     mirror_dir,
+)
+from arborist_experiments.utils.runs import (
     next_version_dir as _next_version_dir,
 )
-
 
 BLOCKS = {
     "radial_hist":  ("hist_",),
@@ -57,7 +62,7 @@ def _write_desc(out_dir: str, cohort, n_cells_by_mod: dict, summary: dict) -> No
               f"    outer_k = {OUTER_K}", f"    inner_k = {INNER_K}",
               f"    seed = {SEED}", f"    min_class_size = {MIN_CLASS_SIZE}",
               f"    n_classes = {len(cohort.label_names)}",
-              f"    label = MET.meta/subclass", f"    coordinates = swc_upright",
+              "    label = MET.meta/subclass", "    coordinates = swc_upright",
               f"    met_path = {MET_PATH}", f"    swc_path = {SWC_PATH}", ""]
     lines += ["* Blocks (columns of the radial_arbors vector, sliced by name prefix)",
               "    radial_hist  -- 12 depth x 12 in-plane-radius cable histogram per group",

@@ -6,7 +6,6 @@ import numpy as np
 
 from arborist_experiments.global_classification.extract import BinningConfig
 
-
 # Ranges are the p0.5-p99.5 envelope of soma-centered swc_upright over all 1618 cells, rounded
 # out: x +/-270, y -310..556, z -32..129. The earlier +/-500 / -300..1300 box was set for an
 # absolute pia frame that this data is not in, so most bins were empty for every cell -- xz put
@@ -25,11 +24,11 @@ PATCHSEQ = BinningConfig(
     name="patchseq",
     density_config=DENSITY_CONFIG,
     sholl_radii=list(np.arange(10.0, 610.0, 10.0)),
-    persim_kwargs=dict(
-        birth_range=(0.0, 500.0),
-        pers_range=(0.0, 500.0),
-        pixel_size=25.0,
-    ),
+    persim_kwargs={
+        "birth_range": (0.0, 500.0),
+        "pers_range": (0.0, 500.0),
+        "pixel_size": 25.0,
+    },
     # p99.5 envelope of soma-centered swc_upright over all 1618 cells: in-plane radius 318 um,
     # y -310..556.
     r_edges=np.linspace(0.0, 320.0, 13),            # 12 in-plane radial bins (microns)

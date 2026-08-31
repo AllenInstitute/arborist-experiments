@@ -16,7 +16,6 @@ import numpy as np
 
 from .data_loading import CACHE_PATH, load_cache
 
-
 BIN_SIZE = 20.0
 
 
@@ -38,13 +37,14 @@ def derive(cache_path: str = CACHE_PATH, max_cells: int | None = None,
     keep = np.isin(types, struct_types)
     xyz = xyz[keep]
 
-    out: dict = {"n_cells": n_cells, "n_nodes": int(len(xyz)),
+    out: dict = {"n_cells": n_cells, "n_nodes": len(xyz),
                  "struct_types": list(struct_types)}
     for ax, name in enumerate("xyz"):
         lo, hi = np.percentile(xyz[:, ax], [0.5, 99.5])
         r_lo, r_hi = _round_out(lo, hi)
-        out[name] = dict(p0_5=float(lo), p99_5=float(hi), r_min=r_lo, r_max=r_hi,
-                         n_bins=int(round((r_hi - r_lo) / BIN_SIZE)))
+        out[name] = {"p0_5": float(lo), "p99_5": float(hi),
+                     "r_min": r_lo, "r_max": r_hi,
+                     "n_bins": int(round((r_hi - r_lo) / BIN_SIZE))}
 
     inplane = np.linalg.norm(xyz[:, [0, 2]], axis=1)
     out["inplane_r_p99_5"] = float(np.percentile(inplane, 99.5))

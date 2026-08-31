@@ -9,12 +9,14 @@ Which modalities are *meaningful* on a given cohort is a separate question and n
 `filter_cell` can answer -- see `microns.modality.check_modality`.
 """
 
-from typing import Optional
 
 from arborist_experiments.utils.cells import (
-    CellGraph, TYPE_APICAL, TYPE_AXON, TYPE_BASAL, TYPE_SOMA,
+    TYPE_APICAL,
+    TYPE_AXON,
+    TYPE_BASAL,
+    TYPE_SOMA,
+    CellGraph,
 )
-
 
 MODALITY_TYPES = {
     "full":     {TYPE_SOMA, TYPE_AXON, TYPE_BASAL, TYPE_APICAL},
@@ -25,7 +27,7 @@ MODALITY_TYPES = {
 }
 
 
-def filter_cell(cell: CellGraph, modality: str) -> Optional[CellGraph]:
+def filter_cell(cell: CellGraph, modality: str) -> CellGraph | None:
     if modality not in MODALITY_TYPES:
         raise ValueError(f"Unknown modality {modality!r}")
     return cell.filtered(MODALITY_TYPES[modality])

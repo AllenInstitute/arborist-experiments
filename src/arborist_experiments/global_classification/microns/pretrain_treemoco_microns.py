@@ -56,20 +56,26 @@ import torch
 from arborist_experiments.treemoco.augment import PRESETS
 from arborist_experiments.treemoco.model import TreeEncoder
 from arborist_experiments.treemoco.pretrain import (
-    PretrainConfig, embed, pretrain,
+    PretrainConfig,
+    embed,
+    pretrain,
 )
 from arborist_experiments.treemoco.tree_features import (
-    collapse, n_features,
+    collapse,
+    n_features,
 )
-
-from .data_loading import CACHE_PATH, INH_CACHE_PATH, cell_from_cache, load_cache
 from arborist_experiments.utils.cells import run_jobs
 from arborist_experiments.utils.runs import (
     log as _log,
+)
+from arborist_experiments.utils.runs import (
     mirror_file,
+)
+from arborist_experiments.utils.runs import (
     next_version_dir as _next_version_dir,
 )
 
+from .data_loading import CACHE_PATH, INH_CACHE_PATH, cell_from_cache, load_cache
 
 SOURCE_CACHES = {"exc": CACHE_PATH, "inh": INH_CACHE_PATH}
 _STR = h5py.string_dtype()
@@ -135,13 +141,12 @@ def _write_artifact(path: str, keys: list[str], Z: np.ndarray, attrs: dict) -> N
 def _write_history(path: str, history) -> None:
     with open(path, "w") as f:
         f.write("epoch,loss,top1,embed_std,lr\n")
-        for s in history:
-            f.write(f"{s.epoch},{s.loss:.6f},{s.top1:.6f},{s.embed_std:.6f},{s.lr:.6e}\n")
+        f.writelines(f"{s.epoch},{s.loss:.6f},{s.top1:.6f},{s.embed_std:.6f},{s.lr:.6e}\n" for s in history)
 
 
 def _write_desc(out_dir: str, cfg: dict, stats: dict) -> None:
-    lines = ["TreeMoCo contrastive pretraining on both MICrONS cohorts jointly "
-             "(Chen et al. 2022, NeurIPS).", ""]
+    lines = [("TreeMoCo contrastive pretraining on both MICrONS cohorts jointly "
+             "(Chen et al. 2022, NeurIPS)."), ""]
     lines += ["* Parameters"]
     for k, v in cfg.items():
         if isinstance(v, dict):

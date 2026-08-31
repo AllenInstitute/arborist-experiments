@@ -14,9 +14,9 @@ from sklearn.metrics import log_loss
 
 from arborist_experiments.global_classification.cv.classifier import GRID
 from arborist_experiments.global_classification.cv.gpu_logreg import (
-    TorchElasticNetLogReg, elasticnet_objective,
+    TorchElasticNetLogReg,
+    elasticnet_objective,
 )
-
 
 GRID_POINTS = [(c, l) for c in GRID["clf__C"] for l in GRID["clf__l1_ratio"]]
 
@@ -107,8 +107,9 @@ def test_fp32_matches_fp64(data, C, l1_ratio):
 
 
 def test_sklearn_api_compatibility(data):
-    from sklearn.base import clone
     import pickle
+
+    from sklearn.base import clone
 
     X, y = data
     est = TorchElasticNetLogReg(C=0.1, l1_ratio=0.5, dtype="float32", device="cpu")

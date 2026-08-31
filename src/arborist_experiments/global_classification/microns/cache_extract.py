@@ -21,7 +21,6 @@ import time
 import h5py
 import numpy as np
 
-
 CACHE_VERSION = 1
 
 SOURCE_PATH = "/root/capsule/data/EM_exc_conf/EM_syn.hdf5"
@@ -123,8 +122,7 @@ def extract(
                 _append(out, recs)
                 out.attrs["n_cells_done"] = hi
                 out.flush()
-                for row, sid, reason in skips:
-                    skipf.write(f"{row},{sid},{reason}\n")
+                skipf.writelines(f"{row},{sid},{reason}\n" for row, sid, reason in skips)
                 skipf.flush()
                 dt = time.time() - t0
                 msg = (f"rows {lo}-{hi}: {len(recs)} kept, {len(skips)} skipped, "
@@ -144,7 +142,7 @@ def _init_cache(out: h5py.File, meta_specimens: list[str], spec_read_s: float) -
     out.attrs["complete"] = False
     out.attrs["specimens_read_seconds"] = spec_read_s
     out.create_dataset("meta_specimens", data=np.array(meta_specimens, dtype="S8"))
-    kw = dict(compression="gzip", compression_opts=4, shuffle=True)
+    kw = {"compression": "gzip", "compression_opts": 4, "shuffle": True}
     out.create_dataset("specimens", shape=(0,), maxshape=(None,), dtype="S8", **kw)
     out.create_dataset("source_row", shape=(0,), maxshape=(None,), dtype=np.int64, **kw)
     out.create_dataset("n_nodes", shape=(0,), maxshape=(None,), dtype=np.int32, **kw)
@@ -205,12 +203,12 @@ def _read_block(src, shapes, specimens, lo: int, hi: int):
         origin = xyz[types == TYPE_SOMA].mean(axis=0)
         pia = np.asarray(pia_d[i], dtype=np.float64).reshape(tuple(int(s) for s in pia_s[i]))
         wm = np.asarray(wm_d[i], dtype=np.float64).reshape(tuple(int(s) for s in wm_s[i]))
-        recs.append(dict(
-            specimen_id=specimens[i], source_row=i, n_nodes=n,
-            xyz=(xyz - origin).astype(np.float32), types=types.astype(np.uint8),
-            parents=parents.astype(np.int32), soma_origin=origin.astype(np.float32),
-            pia_y=_boundary_y(pia), wm_y=_boundary_y(wm),
-        ))
+        recs.append({
+            "specimen_id": specimens[i], "source_row": i, "n_nodes": n,
+            "xyz": (xyz - origin).astype(np.float32), "types": types.astype(np.uint8),
+            "parents": parents.astype(np.int32), "soma_origin": origin.astype(np.float32),
+            "pia_y": _boundary_y(pia), "wm_y": _boundary_y(wm),
+        })
     return recs, skips
 
 
