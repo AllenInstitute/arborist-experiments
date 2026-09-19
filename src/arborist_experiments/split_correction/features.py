@@ -168,7 +168,8 @@ class ArboristFragmentsDataset(FragmentsDataset):
 
 class ArboristFragmentsLoader(FragmentsLoader):
     """
-    FragmentsLoader that emits inputs containing "tree_samples".
+    FragmentsLoader that calls ``ArboristFragmentsDataset.extract_features``
+    so emitted inputs contain "tree_samples".
     """
 
     def _fetch_batch(self, key, sampler):
@@ -177,6 +178,6 @@ class ArboristFragmentsLoader(FragmentsLoader):
         except StopIteration:
             return None
         dataset = self.collection[key]
-        features = dataset.feature_extractor(subgraph)
+        features = dataset.extract_features(subgraph)
         data = ArboristHeteroGraphData(features)
         return data.get_inputs(), data.get_targets()
