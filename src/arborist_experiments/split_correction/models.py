@@ -19,6 +19,28 @@ from neuron_proofreader.models.new_gnn_models import NewVisionHGAT
 from neuron_proofreader.models.simple_models import FeedForwardNet
 
 
+def proposal_length_feature(tree_samples, device, dtype=torch.float32):
+    """
+    Log-scaled proposal length, one scalar per sample. Length is a property
+    of the candidate edge that neither the rooted-subgraph curves nor the
+    resized image patch expose, so it is fed to the models explicitly.
+
+    Parameters
+    ----------
+    tree_samples : List[TreeSample]
+        Samples produced by ProposalTreeFeatureExtractor.
+
+    Returns
+    -------
+    torch.Tensor
+        Shape (n_samples, 1), values ``log1p(length_in_microns)``.
+    """
+    lengths = torch.tensor(
+        [s.proposal_length for s in tree_samples], device=device, dtype=dtype
+    )
+    return torch.log1p(lengths).unsqueeze(1)
+
+
 # --- Tree Encoder ---
 class ProposalTreeEncoder(nn.Module):
     """
@@ -118,10 +140,10 @@ class SplitDetector(nn.Module):
     """
     Graph-only proposal classifier used as a benchmark baseline.
 
-    Scores a proposal from its Arborist embedding alone, with no image or
-    hand-crafted geometric features and no message passing between
-    proposals. Comparing it against ArboristVisionHGAT isolates how much the
-    skeleton modality contributes on its own.
+    Scores a proposal from its Arborist embedding and its length, with no
+    image and no message passing between proposals. Comparing it against
+    ArboristVisionHGAT isolates how much the skeleton modality contributes
+    on its own.
 
     Parameters
     ----------
@@ -150,7 +172,7 @@ class SplitDetector(nn.Module):
         }
         self.encoder = ProposalTreeEncoder(latent_dim=latent_dim, **encoder_kwargs)
         self.head = nn.Sequential(
-            nn.Linear(latent_dim, hidden_dim),
+            nn.Linear(latent_dim + 1, hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, 1),
@@ -170,7 +192,9 @@ class SplitDetector(nn.Module):
             Logits of shape (B, 1).
         """
         samples = x["tree_sample"] if isinstance(x, dict) else x
-        return self.head(self.encoder(samples))
+        z = self.encoder(samples)
+        length = proposal_length_feature(samples, z.device, z.dtype)
+        return self.head(torch.cat((z, length), dim=1))
 
     def save(self, path):
         torch.save({"config": self.config, "state_dict": self.state_dict()}, path)
@@ -191,9 +215,10 @@ class SplitDetector(nn.Module):
 class ArboristVisionHGAT(NewVisionHGAT):
     """
     NewVisionHGAT with no hand-crafted features. Proposal nodes are
-    initialized from an image patch and an Arborist embedding of the
-    proposal-rooted skeleton subgraph, which is the only place skeleton
-    geometry enters the model. Branch nodes are relays: they start from one
+    initialized from an image patch, an Arborist embedding of the
+    proposal-rooted skeleton subgraph, and the proposal length. The subgraph
+    is the only place skeleton geometry enters the model; length is passed
+    explicitly because neither the curves nor the resized patch expose it. Branch nodes are relays: they start from one
     learned vector and acquire their state through message passing from the
     proposals they touch, so proposals sharing a fragment can still exchange
     information. The hand-crafted proposal and branch features in the batch
@@ -242,12 +267,12 @@ class ArboristVisionHGAT(NewVisionHGAT):
         # No hand-crafted proposal features: the tree embedding replaces them
         self.proposal_encoder = None
 
-        # Skeleton modality and a fusion layer over image + tree embeddings
+        # Skeleton modality and a fusion layer over image + tree + length
         self.tree_encoder = ProposalTreeEncoder(
             latent_dim=tree_embed_dim, **tree_encoder_kwargs
         )
         self.fusion = FeedForwardNet(
-            self.config["img_embed_dim"] + tree_embed_dim,
+            self.config["img_embed_dim"] + tree_embed_dim + 1,
             self.config["hidden_dim"],
             2,
         )
@@ -272,8 +297,9 @@ class ArboristVisionHGAT(NewVisionHGAT):
             self.branch_relay.to(x_img.dtype).unsqueeze(0).expand(n_branches, -1)
         )
 
-        # Fuse image and tree embeddings
-        x_dict["proposal"] = self.fusion(torch.cat((x_img, x_tree), dim=1))
+        # Fuse image and tree embeddings with the proposal length
+        x_len = proposal_length_feature(tree_samples, x_img.device, x_img.dtype)
+        x_dict["proposal"] = self.fusion(torch.cat((x_img, x_tree, x_len), dim=1))
 
         # Message passing with residual connections
         for gat, proj in zip(self.gats, self.head_projs):

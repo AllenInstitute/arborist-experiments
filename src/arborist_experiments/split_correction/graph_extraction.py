@@ -352,7 +352,9 @@ class ProposalTreeFeatureExtractor:
         TreeSample
             Curves are first-order differences with a leading zero row.
             ``root_curve_indices`` marks the curves incident to the root,
-            i.e. the two sides of the proposal.
+            i.e. the two sides of the proposal. ``proposal_length`` holds the
+            Euclidean distance (microns) between the proposal endpoints,
+            which the curves alone do not expose.
         """
         subgraph, _ = proposal_rooted_subgraph(
             graph,
@@ -382,8 +384,10 @@ class ProposalTreeFeatureExtractor:
         root_curve_indices = [
             k for k, (src, _) in enumerate(topo_edge_index) if src == 0
         ]
-        return TreeSample(
+        sample = TreeSample(
             curves=curves,
             edge_index=edge_index,
             root_curve_indices=root_curve_indices,
         )
+        sample.proposal_length = float(graph.dist(*tuple(proposal)))
+        return sample

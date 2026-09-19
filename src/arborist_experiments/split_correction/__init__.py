@@ -21,5 +21,6 @@ from arborist_experiments.split_correction.models import (
     ProposalTreeEncoder,
     SplitDetector,
     load_pretrained_curve_encoder,
+    proposal_length_feature,
 )
 from arborist_experiments.merge_detection.trainer import GraphTrainer

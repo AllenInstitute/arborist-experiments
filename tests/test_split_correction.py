@@ -16,6 +16,7 @@ from arborist_experiments.split_correction import (
     ProposalTreeFeatureExtractor,
     SplitDetector,
     bridge_points,
+    proposal_length_feature,
     proposal_rooted_subgraph,
     spline_bridge,
     tail_path,
@@ -181,6 +182,7 @@ def test_extractor_and_dataset():
     assert sample.root_curve_indices == [0, 1]
     assert all(np.allclose(c[0], 0) for c in sample.curves)
     assert all(len(c) >= 10 for c in sample.curves)
+    assert sample.proposal_length == 6.0  # gap between the facing leaves
     assert extractor.config["max_depth"] == 8.0
 
     ds = ProposalTreeDataset(graph, extractor, rebalance_classes=False)
@@ -195,6 +197,11 @@ def test_encoder_baseline_and_hgat_forward():
     graph.proposals.add(frozenset((0, 21)))
     extractor = ProposalTreeFeatureExtractor(max_depth=8.0)
     samples = [extractor(graph, p) for p in graph.list_proposals()]
+
+    length = proposal_length_feature(samples, device="cpu")
+    assert length.shape == (2, 1)
+    expected = torch.log1p(torch.tensor([6.0, 26.0]))  # gap and far-leaf proposals
+    assert torch.allclose(length[:, 0].sort().values, expected, atol=1e-6)
 
     tree_kwargs = dict(curve_d_token=16, curve_n_layers=1, graph_n_layers=1)
     encoder = ProposalTreeEncoder(latent_dim=16, **tree_kwargs)
@@ -213,6 +220,7 @@ def test_encoder_baseline_and_hgat_forward():
     ).eval()
     assert model.proposal_encoder is None and model.branch_encoder is None
     assert model.branch_relay.shape == (32,)
+    assert model.fusion.layers[0].in_features == 16 + 16 + 1 if hasattr(model.fusion, "layers") else True
     assert model.config["model_type"] == "ArboristVisionHGAT"
     with torch.no_grad():
         logits = model(copy.deepcopy(inputs))
