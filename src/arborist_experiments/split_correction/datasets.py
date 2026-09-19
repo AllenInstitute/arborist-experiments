@@ -64,7 +64,6 @@ class ProposalTreeDataset(Dataset):
         min_curve_len=10,
         node_spacing=None,
         bridge_mode="linear",
-        spline_context=None,
         class_ratios=(0.5, 0.5),
         rebalance_classes=True,
         transform=None,
@@ -76,7 +75,6 @@ class ProposalTreeDataset(Dataset):
         self.min_curve_len = min_curve_len
         self.node_spacing = node_spacing
         self.bridge_mode = bridge_mode
-        self.spline_context = spline_context
         self.class_ratios = class_ratios
         self.rebalance_classes = rebalance_classes
         self.transform = transform
@@ -92,7 +90,6 @@ class ProposalTreeDataset(Dataset):
             "min_curve_len": min_curve_len,
             "node_spacing": node_spacing,
             "bridge_mode": bridge_mode,
-            "spline_context": spline_context,
             "class_ratios": list(class_ratios),
             "rebalance_classes": rebalance_classes,
             "transform": type(transform).__name__ if transform else None,
@@ -132,7 +129,6 @@ class ProposalTreeDataset(Dataset):
             min_curve_len=self.min_curve_len,
             node_spacing=self.node_spacing,
             bridge_mode=self.bridge_mode,
-            spline_context=self.spline_context,
             transform=self.transform,
             graph_transform=self.graph_transform,
         )
@@ -176,7 +172,7 @@ class ProposalSearchDataset(Dataset):
     """
 
     def __init__(
-        self, graph, max_depth, min_curve_len=10, node_spacing=None, bridge_mode="linear", spline_context=None
+        self, graph, max_depth, min_curve_len=10, node_spacing=None, bridge_mode="linear"
     ):
         super().__init__()
         self.graph = graph
@@ -184,7 +180,6 @@ class ProposalSearchDataset(Dataset):
         self.min_curve_len = min_curve_len
         self.node_spacing = node_spacing
         self.bridge_mode = bridge_mode
-        self.spline_context = spline_context
         self.proposals = graph.list_proposals()
         self.collate_fn = collate_search_samples
 
@@ -196,7 +191,6 @@ class ProposalSearchDataset(Dataset):
             min_curve_len=self.min_curve_len,
             node_spacing=self.node_spacing,
             bridge_mode=self.bridge_mode,
-            spline_context=self.spline_context,
         )
         return i, sample
 

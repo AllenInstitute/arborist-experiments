@@ -207,7 +207,7 @@ def test_spline_bridge_follows_curvature():
     assert tail_path(graph, i, max_length=6.0)[-1] == i
     assert len(tail_path(graph, i, max_length=6.0)) > 1
 
-    root, pts_i, pts_j = spline_bridge(graph, i, j, spacing=1.0, context=8.0)
+    root, pts_i, pts_j = spline_bridge(graph, i, j, spacing=1.0)
     # Bridge points stay close to the circle the fragments lie on, whereas
     # the straight chord sags toward the center.
     bridge = np.vstack([pts_i, root[None], pts_j])
