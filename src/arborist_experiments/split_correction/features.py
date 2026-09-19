@@ -19,6 +19,10 @@ from neuron_proofreader.split_proofreading.split_feature_extraction import (
     HeteroGraphData,
 )
 
+from arborist_experiments.split_correction.graph_extraction import (
+    ProposalTreeFeatureExtractor,
+)
+
 
 class ArboristHeteroGraphData(HeteroGraphData):
     """
@@ -47,16 +51,18 @@ class ArboristFragmentsDataset(FragmentsDataset):
         Graph with proposals generated.
     img_config : ImageConfig
         Image configuration.
-    tree_extractor : ProposalTreeFeatureExtractor
-        Extraction settings for the rooted subgraphs.
+    **tree_kwargs
+        Extraction settings for the rooted subgraphs, forwarded to
+        ProposalTreeFeatureExtractor (max_depth, min_curve_len, node_spacing,
+        bridge_mode, spline_context, transform, graph_transform).
     """
 
-    def __init__(self, fragments_graph, img_config, tree_extractor):
+    def __init__(self, fragments_graph, img_config, **tree_kwargs):
         # Call parent class
         super().__init__(fragments_graph, img_config)
 
         # Instance attributes
-        self.tree_extractor = tree_extractor
+        self.tree_extractor = ProposalTreeFeatureExtractor(**tree_kwargs)
 
     def extract_features(self, subgraph):
         """

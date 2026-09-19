@@ -185,7 +185,7 @@ def test_extractor_and_dataset():
     assert sample.proposal_length == 6.0  # gap between the facing leaves
     assert extractor.config["max_depth"] == 8.0
 
-    ds = ProposalTreeDataset(graph, extractor, rebalance_classes=False)
+    ds = ProposalTreeDataset(graph, rebalance_classes=False, max_depth=8.0)
     assert len(ds) == 2 and ds.n_proposals() == 2
     labels = sorted(label for _, label in (ds[i] for i in range(len(ds))))
     assert labels == [0, 1]
