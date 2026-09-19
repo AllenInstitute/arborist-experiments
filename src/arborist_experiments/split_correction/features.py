@@ -122,16 +122,14 @@ class ArboristHeteroGraphData(HeteroGraphData):
 class ArboristFragmentsDataset(FragmentsDataset):
     """
     FragmentsDataset whose feature extractor also attaches one TreeSample
-    per proposal. The standard FeaturePipeline built by FragmentsDataset is
-    kept as ``self.pipeline``; ``self.feature_extractor`` chains the tree
-    extractor onto it, so FragmentsLoader-style callers work unchanged.
+    per proposal.
 
     Parameters
     ----------
     fragments_graph : ProposalGraph
         Graph with proposals generated.
     img_config : ImageConfig
-        Image configuration (img_path, brightness_clip, patch_shape).
+        Image configuration.
     tree_kwargs : dict, optional
         Keyword arguments for ProposalTreeFeatureExtractor (max_depth,
         min_curve_len, node_spacing, bridge_mode, spline_context, transform,
@@ -139,12 +137,13 @@ class ArboristFragmentsDataset(FragmentsDataset):
     """
 
     def __init__(self, fragments_graph, img_config, tree_kwargs=None):
+        # Call parent class
         super().__init__(fragments_graph, img_config)
-        self.pipeline = self.feature_extractor
+
+        # Instance attributes
         self.tree_extractor = ProposalTreeFeatureExtractor(
             self.graph, **(tree_kwargs or {})
         )
-        self.feature_extractor = self.extract_features
 
     def extract_features(self, subgraph):
         """
@@ -160,11 +159,11 @@ class ArboristFragmentsDataset(FragmentsDataset):
         FeatureSet
             Standard features plus ``tree_samples``.
         """
-        return self.tree_extractor(self.pipeline(subgraph))
+        return self.tree_extractor(self.feature_extractor(subgraph))
 
     def __iter__(self):
         for subgraph in iter(self.sampler):
-            yield ArboristHeteroGraphData(self.feature_extractor(subgraph))
+            yield ArboristHeteroGraphData(self.extract_features(subgraph))
 
 
 class ArboristFragmentsLoader(FragmentsLoader):
