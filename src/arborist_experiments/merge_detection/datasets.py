@@ -15,6 +15,11 @@ import rustworkx as rx
 import torch
 from torch.utils.data import Dataset
 
+from arborist.data.datasets import TreeSample, _build_line_graph_edge_index
+from arborist.utils.graph_utils import topological_decomposition
+from arborist.utils.swc_loading import Reader
+from arborist.utils.util import write_json
+
 from neuron_proofreader.utils.ml_util import TensorDict
 
 
@@ -108,12 +113,6 @@ def collate_fn(batch):
     nodes = torch.tensor([item[0] for item in batch])
     samples = [item[1] for item in batch]
     return nodes, TensorDict({"tree_sample": samples})
-
-
-from arborist.data.datasets import TreeSample, _build_line_graph_edge_index
-from arborist.utils.graph_utils import topological_decomposition
-from arborist.utils.swc_loading import Reader
-from arborist.utils.util import write_json
 
 
 class MergeGraphDataset(Dataset):
