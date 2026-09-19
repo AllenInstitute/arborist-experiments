@@ -10,8 +10,8 @@ Dataset utilities for training a merge-detection model on graph structure only.
 
 import os
 
-import networkx as nx
 import numpy as np
+import rustworkx as rx
 import torch
 from torch.utils.data import Dataset
 
@@ -67,14 +67,14 @@ class GraphSearchDataset(Dataset):
 
     def _collect_dense_nodes(self, step_size):
         nodes = []
-        for component in nx.connected_components(self.graph):
-            leaves = [n for n in component if self.graph.degree[n] == 1]
+        for component in rx.connected_components(self.graph):
+            leaves = [n for n in component if self.graph.degree(n) == 1]
             if not leaves:
                 continue
             root = leaves[0]
             last_node = root
-            for i, j in nx.dfs_edges(self.graph, source=root):
-                is_branching = self.graph.degree[j] >= 3
+            for i, j in rx.dfs_edges(self.graph, source=root):
+                is_branching = self.graph.degree(j) >= 3
                 is_next = self.graph.dist(last_node, j) >= step_size - 2
                 if is_next or is_branching:
                     last_node = j
