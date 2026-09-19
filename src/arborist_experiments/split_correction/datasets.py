@@ -17,10 +17,6 @@ from torch.utils.data import Dataset
 from arborist.utils.util import write_json
 from neuron_proofreader.utils.ml_util import TensorDict
 
-from arborist_experiments.split_correction.graph_extraction import (
-    ProposalTreeFeatureExtractor,
-)
-
 
 class ProposalTreeDataset(Dataset):
     """
@@ -33,9 +29,8 @@ class ProposalTreeDataset(Dataset):
     ----------
     graph : ProposalGraph
         Graph with proposals generated and ``gt_accepts`` populated.
-    tree_extractor : ProposalTreeFeatureExtractor, optional
-        Extraction settings for the rooted subgraphs. Default is
-        ``ProposalTreeFeatureExtractor()``.
+    tree_extractor : ProposalTreeFeatureExtractor
+        Extraction settings for the rooted subgraphs.
     proposals : Iterable[Frozenset[int]], optional
         Proposals to include. Default is ``graph.list_proposals()``.
     class_ratios : Tuple[float, float], optional
@@ -49,14 +44,14 @@ class ProposalTreeDataset(Dataset):
     def __init__(
         self,
         graph,
-        tree_extractor=None,
+        tree_extractor,
         proposals=None,
         class_ratios=(0.5, 0.5),
         rebalance_classes=True,
     ):
         super().__init__()
         self.graph = graph
-        self.tree_extractor = tree_extractor or ProposalTreeFeatureExtractor()
+        self.tree_extractor = tree_extractor
         self.class_ratios = class_ratios
         self.rebalance_classes = rebalance_classes
 
@@ -126,15 +121,14 @@ class ProposalSearchDataset(Dataset):
     ----------
     graph : ProposalGraph
         Graph with proposals generated.
-    tree_extractor : ProposalTreeFeatureExtractor, optional
-        Extraction settings for the rooted subgraphs. Default is
-        ``ProposalTreeFeatureExtractor()``.
+    tree_extractor : ProposalTreeFeatureExtractor
+        Extraction settings for the rooted subgraphs.
     """
 
-    def __init__(self, graph, tree_extractor=None):
+    def __init__(self, graph, tree_extractor):
         super().__init__()
         self.graph = graph
-        self.tree_extractor = tree_extractor or ProposalTreeFeatureExtractor()
+        self.tree_extractor = tree_extractor
         self.proposals = graph.list_proposals()
         self.collate_fn = collate_search_samples
 
