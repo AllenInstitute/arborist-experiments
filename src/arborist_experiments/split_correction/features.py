@@ -14,8 +14,6 @@ the row order of the proposal feature matrix and image patches.
 
 """
 
-import numpy as np
-
 from neuron_proofreader.split_proofreading.split_datamodules import (
     FragmentsDataset,
     FragmentsLoader,
@@ -32,8 +30,7 @@ from arborist_experiments.split_correction.graph_extraction import (
 
 class ProposalTreeFeatureExtractor:
     """
-    Builds one TreeSample per proposal of a computation subgraph, and one
-    curve per branch, so that neither node type needs hand-crafted features.
+    Builds one TreeSample per proposal of a computation subgraph.
 
     Parameters
     ----------
@@ -81,18 +78,13 @@ class ProposalTreeFeatureExtractor:
 
     def __call__(self, features):
         """
-        Attaches ``features.tree_samples`` in proposal-index order and
-        ``features.branch_curves`` in branch-index order.
+        Attaches ``features.tree_samples`` in proposal-index order.
 
         Parameters
         ----------
         features : FeatureSet
-            Feature set whose ``proposal_index_mapping`` and
-            ``edge_index_mapping`` fix the orders. ``features.graph`` must be
-            the ProposalComputationGraph, whose ``edge_to_path`` gives the
-            skeleton path behind each branch.
+            Feature set whose ``proposal_index_mapping`` fixes the order.
         """
-        features.branch_curves = self.extract_branch_curves(features)
         idx_to_id = features.proposal_index_mapping.idx_to_id
         features.tree_samples = [
             proposal_tree_sample(
@@ -109,39 +101,6 @@ class ProposalTreeFeatureExtractor:
             for idx in range(len(idx_to_id))
         ]
         return features
-
-    def extract_branch_curves(self, features):
-        """
-        Converts each branch (irreducible path between computation nodes)
-        into a first-difference curve in the CurveEncoder convention.
-
-        Returns
-        -------
-        List[numpy.ndarray]
-            One (N_k, 3) array per branch, in branch-index order, zero-padded
-            to at least ``min_curve_len`` rows. Empty if the feature set has
-            no ``edge_index_mapping`` or its graph has no ``edge_to_path``.
-        """
-        mapping = getattr(features, "edge_index_mapping", None)
-        edge_to_path = getattr(getattr(features, "graph", None), "edge_to_path", None)
-        if mapping is None or edge_to_path is None:
-            return []
-        curves = []
-        for idx in range(len(mapping.idx_to_id)):
-            edge = mapping.idx_to_id[idx]
-            path = np.asarray(edge_to_path[edge], dtype=int)
-            xyz = np.asarray(self.graph.node_xyz[path], dtype=np.float32).copy()
-            if self.graph_transform:
-                xyz = self.graph_transform(xyz)
-            if self.transform:
-                xyz = self.transform(xyz)
-            xyz -= xyz[0]
-            xyz[1:] -= xyz[:-1].copy()
-            if len(xyz) < self.min_curve_len:
-                pad = np.zeros((self.min_curve_len - len(xyz), 3), dtype=xyz.dtype)
-                xyz = np.concatenate([xyz, pad], axis=0)
-            curves.append(xyz)
-        return curves
 
 
 class ArboristFeaturePipeline(FeaturePipeline):
@@ -174,19 +133,17 @@ class ArboristFeaturePipeline(FeaturePipeline):
 
 class ArboristHeteroGraphData(HeteroGraphData):
     """
-    HeteroGraphData that carries TreeSamples and branch curves through to
-    the model inputs under the "tree_samples" and "branch_curves" keys.
+    HeteroGraphData that carries TreeSamples through to the model inputs
+    under the "tree_samples" key.
     """
 
     def __init__(self, features):
         super().__init__(features)
         self.tree_samples = getattr(features, "tree_samples", None)
-        self.branch_curves = getattr(features, "branch_curves", None)
 
     def get_inputs(self):
         inputs = super().get_inputs()
         inputs["tree_samples"] = self.tree_samples
-        inputs["branch_curves"] = self.branch_curves
         return inputs
 
 

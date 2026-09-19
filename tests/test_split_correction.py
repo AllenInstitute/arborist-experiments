@@ -240,11 +240,8 @@ def test_spline_falls_back_for_nonleaf_endpoints():
 
 def _hetero_inputs(samples, patch_shape=(16, 16, 16)):
     dims = get_feature_dict()
-    rng = np.random.default_rng(0)
-    branch_curves = [np.r_[np.zeros((1, 3)), rng.normal(size=(n - 1, 3))].astype(np.float32) for n in (12, 15, 10)]
     return {
         "x_dict": {"branch": torch.randn(3, dims["branch"]), "proposal": torch.randn(2, dims["proposal"])},
-        "branch_curves": branch_curves,
         "img": torch.randn(2, 2, *patch_shape),
         "edge_index_dict": {
             ("branch", "to", "branch"): torch.tensor([[0, 1], [1, 2]]),
@@ -273,24 +270,19 @@ def test_hgat_replaces_handcrafted_features():
     )
 
     # Default: nothing hand-crafted. Proposals = image patch + tree embedding,
-    # branches = shared CurveEncoder over their skeleton paths.
+    # branches = learned relay embedding shared by all branch nodes.
     model = ArboristVisionHGAT(patch_shape, **kw).eval()
     cfg = model.config
     assert cfg["use_skeleton_features"] is False and cfg["use_image_profiles"] is False
-    assert cfg["use_branch_features"] is False
     assert model.proposal_encoder is None and len(model.feature_columns) == 0
-    assert model.branch_encoder is None
+    assert model.branch_encoder is None and model.branch_relay.shape == (32,)
     with torch.no_grad():
-        z_branch = model.encode_branch_curves(inputs["branch_curves"])
-        assert z_branch.shape == (3, 32)
         assert model(copy.deepcopy(inputs)).shape == (2, 1)
 
-    # Ablation: every hand-crafted input re-enabled, behaves like NewVisionHGAT + tree
-    model = ArboristVisionHGAT(
-        patch_shape, use_skeleton_features=True, use_image_profiles=True, use_branch_features=True, **kw
-    ).eval()
+    # Ablation: hand-crafted proposal inputs re-enabled; branches stay relays
+    model = ArboristVisionHGAT(patch_shape, use_skeleton_features=True, use_image_profiles=True, **kw).eval()
     assert len(model.feature_columns) == dims["proposal"]
-    assert model.branch_encoder is not None
+    assert model.branch_encoder is None
     with torch.no_grad():
         assert model(copy.deepcopy(inputs)).shape == (2, 1)
 
@@ -300,28 +292,3 @@ def test_hgat_replaces_handcrafted_features():
     assert model.feature_columns.min().item() == N_SKELETON_FEATURES
     with torch.no_grad():
         assert model(copy.deepcopy(inputs)).shape == (2, 1)
-
-
-def test_branch_curves_follow_edge_index_order():
-    graph, proposal = _two_fragments()
-    a = frozenset((0, 5)); b = frozenset((5, 10))
-
-    class _Mapping:
-        def __init__(self, ids):
-            self.idx_to_id = dict(enumerate(ids))
-
-    class _Graph:
-        edge_to_path = {a: np.arange(0, 6), b: np.arange(5, 11)}
-
-    class _Features:
-        proposal_index_mapping = _Mapping([proposal])
-        edge_index_mapping = _Mapping([b, a])
-        graph = _Graph()
-
-    features = ProposalTreeFeatureExtractor(graph, max_depth=8.0, min_curve_len=4)(_Features())
-    assert len(features.branch_curves) == 2
-    # Branch 0 is edge b (nodes 5..10), branch 1 is edge a (nodes 0..5)
-    assert features.branch_curves[0].shape == (6, 3) and features.branch_curves[1].shape == (6, 3)
-    assert np.allclose(features.branch_curves[0][0], 0)
-    assert np.allclose(features.branch_curves[0][1:, 0], 1.0)  # unit steps along x
-    assert len(features.tree_samples) == 1

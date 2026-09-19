@@ -227,15 +227,15 @@ class ArboristVisionHGAT(NewVisionHGAT):
     """
     NewVisionHGAT with no hand-crafted features. Proposal nodes are
     initialized from an image patch and an Arborist embedding of the
-    proposal-rooted skeleton subgraph. Branch nodes are initialized from
-    Arborist CurveEncoder embeddings of their skeleton paths, sharing weights
-    with the tree encoder. Every hand-crafted input of NewVisionHGAT can be
-    re-enabled individually for ablations.
+    proposal-rooted skeleton subgraph, which is the only place skeleton
+    geometry enters the model. Branch nodes are relays: they start from one
+    learned vector and acquire their state through message passing from the
+    proposals they touch, so proposals sharing a fragment can still exchange
+    information. The hand-crafted proposal inputs of NewVisionHGAT can be
+    re-enabled for ablations; branch nodes are always relays.
 
     The forward pass expects ``input_dict["tree_samples"]`` (TreeSamples in
-    proposal-index order) and ``input_dict["branch_curves"]`` (first-
-    difference curves in branch-index order), in addition to the keys
-    NewVisionHGAT consumes.
+    proposal-index order) in addition to the keys NewVisionHGAT consumes.
 
     Parameters
     ----------
@@ -256,10 +256,6 @@ class ArboristVisionHGAT(NewVisionHGAT):
         If True, the hand-crafted image intensity profiles sampled along the
         branches and proposal line are kept as a proposal input. Default is
         False; the CNN patch embedding is the image modality.
-    use_branch_features : bool, optional
-        If True, branch nodes keep NewVisionHGAT's hand-crafted features
-        (mean radius, length). Default is False: branch nodes are encoded
-        from their skeleton curves with the shared CurveEncoder.
     **hgat_kwargs
         Forwarded to NewVisionHGAT (concat_heads, geometry_embed_dim, heads,
         hidden_dim, img_embed_dim, n_layers).
@@ -272,7 +268,6 @@ class ArboristVisionHGAT(NewVisionHGAT):
         tree_encoder_kwargs=None,
         use_skeleton_features=False,
         use_image_profiles=False,
-        use_branch_features=False,
         **hgat_kwargs,
     ):
         super().__init__(patch_shape, **hgat_kwargs)
@@ -283,7 +278,6 @@ class ArboristVisionHGAT(NewVisionHGAT):
                 "tree_embed_dim": tree_embed_dim,
                 "use_skeleton_features": use_skeleton_features,
                 "use_image_profiles": use_image_profiles,
-                "use_branch_features": use_branch_features,
                 "tree_encoder_kwargs": {
                     k: v
                     for k, v in tree_encoder_kwargs.items()
@@ -320,34 +314,11 @@ class ArboristVisionHGAT(NewVisionHGAT):
             2,
         )
 
-        # Branch nodes: learned curve embeddings instead of hand-crafted
-        # features. The CurveEncoder is shared with the tree encoder.
-        self.use_branch_features = use_branch_features
-        if not use_branch_features:
-            self.branch_encoder = None
-            self.branch_curve_proj = nn.Linear(tree_embed_dim, self.config["hidden_dim"])
-
-    def encode_branch_curves(self, curves):
-        """
-        Embeds branch skeleton curves with the shared CurveEncoder.
-
-        Parameters
-        ----------
-        curves : List[numpy.ndarray]
-            First-difference curves in branch-index order.
-
-        Returns
-        -------
-        torch.Tensor
-            Shape (n_branches, hidden_dim).
-        """
-        arborist = self.tree_encoder.arborist
-        if len(curves) == 0:
-            device = next(self.parameters()).device
-            return torch.zeros(0, self.config["hidden_dim"], device=device)
-        diffs, mask = arborist._collate_curves(curves)
-        z, _ = arborist.curve_encoder(diffs, mask)
-        return self.branch_curve_proj(z)
+        # Branch nodes are relays: one learned embedding shared by all
+        # branches, refined only through message passing.
+        self.branch_encoder = None
+        self.branch_relay = nn.Parameter(torch.zeros(self.config["hidden_dim"]))
+        nn.init.normal_(self.branch_relay, std=0.02)
 
     def forward(self, input_dict):
         x_dict = input_dict["x_dict"]
@@ -358,12 +329,10 @@ class ArboristVisionHGAT(NewVisionHGAT):
         # Initial embeddings
         x_img = self.img_encoder(x_img)
         x_tree = self.tree_encoder(tree_samples).to(x_img.dtype)
-        if self.branch_encoder is not None:
-            x_dict["branch"] = self.branch_encoder(x_dict["branch"])
-        else:
-            x_dict["branch"] = self.encode_branch_curves(
-                input_dict["branch_curves"]
-            ).to(x_img.dtype)
+        n_branches = x_dict["branch"].shape[0]
+        x_dict["branch"] = (
+            self.branch_relay.to(x_img.dtype).unsqueeze(0).expand(n_branches, -1)
+        )
 
         # Fuse the surviving proposal features, image and tree embeddings
         parts = [x_img, x_tree]
@@ -384,3 +353,4 @@ class ArboristVisionHGAT(NewVisionHGAT):
                 for key in x_dict
             }
         return self.output(x_dict["proposal"])
+
