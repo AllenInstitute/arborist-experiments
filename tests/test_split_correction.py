@@ -292,3 +292,37 @@ def test_hgat_replaces_handcrafted_features():
     assert model.feature_columns.min().item() == N_SKELETON_FEATURES
     with torch.no_grad():
         assert model(copy.deepcopy(inputs)).shape == (2, 1)
+
+
+def test_fragments_dataset_chains_tree_extractor(monkeypatch):
+    import neuron_proofreader.split_proofreading.split_datamodules as dm
+    from arborist_experiments.split_correction import ArboristFragmentsDataset
+
+    graph, proposal = _two_fragments()
+
+    class _Mapping:
+        idx_to_id = {0: proposal}
+
+    class _Features:
+        proposal_index_mapping = _Mapping()
+
+    calls = []
+
+    class _FakePipeline:
+        def __init__(self, *args, **kwargs):
+            calls.append((args, kwargs))
+
+        def __call__(self, subgraph):
+            return _Features()
+
+    class _ImgConfig:
+        img_path, brightness_clip, patch_shape, transform = "unused", 400, (16, 16, 16), None
+
+    monkeypatch.setattr(dm, "FeaturePipeline", _FakePipeline)
+    ds = ArboristFragmentsDataset(graph, _ImgConfig(), tree_kwargs=dict(max_depth=8.0))
+    assert len(calls) == 1 and calls[0][0][0] is graph  # parent built the pipeline once
+    assert isinstance(ds.pipeline, _FakePipeline)
+
+    features = ds.feature_extractor(subgraph=None)
+    assert len(features.tree_samples) == 1
+    assert features.tree_samples[0].root_curve_indices == [0, 1]

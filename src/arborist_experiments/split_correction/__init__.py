@@ -5,7 +5,6 @@ from arborist_experiments.split_correction.datasets import (
     collate_search_samples,
 )
 from arborist_experiments.split_correction.features import (
-    ArboristFeaturePipeline,
     ArboristFragmentsDataset,
     ArboristFragmentsLoader,
     ArboristHeteroGraphData,

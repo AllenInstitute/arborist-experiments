@@ -4,13 +4,14 @@ Created on Fri Sep 19 2026
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-Hooks that attach proposal-rooted TreeSamples to the split-correction
-feature pipeline so ArboristVisionHGAT receives them alongside the
-geometric features and image patches.
+Hooks that attach proposal-rooted TreeSamples to the split-correction data
+pipeline so ArboristVisionHGAT receives them alongside the image patches.
 
-The classes here are thin subclasses of the neuron_proofreader split
-pipeline. Each batch's TreeSamples are ordered by proposal index, matching
-the row order of the proposal feature matrix and image patches.
+ArboristFragmentsDataset chains a ProposalTreeFeatureExtractor onto the
+standard FeaturePipeline, and ArboristHeteroGraphData / ArboristFragmentsLoader
+carry the resulting TreeSamples into the model inputs. Each batch's
+TreeSamples are ordered by proposal index, matching the row order of the
+proposal feature matrix and image patches.
 
 """
 
@@ -19,7 +20,6 @@ from neuron_proofreader.split_proofreading.split_datamodules import (
     FragmentsLoader,
 )
 from neuron_proofreader.split_proofreading.split_feature_extraction import (
-    FeaturePipeline,
     HeteroGraphData,
 )
 
@@ -103,34 +103,6 @@ class ProposalTreeFeatureExtractor:
         return features
 
 
-class ArboristFeaturePipeline(FeaturePipeline):
-    """
-    FeaturePipeline that additionally produces TreeSamples per proposal.
-
-    Parameters
-    ----------
-    graph : ProposalGraph
-        Graph to extract features from.
-    img_path : str
-        Path to image of whole-brain dataset.
-    tree_kwargs : dict, optional
-        Keyword arguments for ProposalTreeFeatureExtractor (max_depth,
-        min_curve_len, node_spacing, transform, graph_transform).
-    **kwargs
-        Forwarded to FeaturePipeline.
-    """
-
-    def __init__(self, graph, img_path, tree_kwargs=None, **kwargs):
-        super().__init__(graph, img_path, **kwargs)
-        self.tree_extractor = ProposalTreeFeatureExtractor(
-            graph, **(tree_kwargs or {})
-        )
-
-    def __call__(self, subgraph):
-        features = super().__call__(subgraph)
-        return self.tree_extractor(features)
-
-
 class ArboristHeteroGraphData(HeteroGraphData):
     """
     HeteroGraphData that carries TreeSamples through to the model inputs
@@ -149,7 +121,10 @@ class ArboristHeteroGraphData(HeteroGraphData):
 
 class ArboristFragmentsDataset(FragmentsDataset):
     """
-    FragmentsDataset whose feature extractor is an ArboristFeaturePipeline.
+    FragmentsDataset whose feature extractor also attaches one TreeSample
+    per proposal. The standard FeaturePipeline built by FragmentsDataset is
+    kept as ``self.pipeline``; ``self.feature_extractor`` chains the tree
+    extractor onto it, so FragmentsLoader-style callers work unchanged.
 
     Parameters
     ----------
@@ -158,19 +133,34 @@ class ArboristFragmentsDataset(FragmentsDataset):
     img_config : ImageConfig
         Image configuration (img_path, brightness_clip, patch_shape).
     tree_kwargs : dict, optional
-        Keyword arguments for ProposalTreeFeatureExtractor.
+        Keyword arguments for ProposalTreeFeatureExtractor (max_depth,
+        min_curve_len, node_spacing, bridge_mode, spline_context, transform,
+        graph_transform).
     """
 
     def __init__(self, fragments_graph, img_config, tree_kwargs=None):
-        self.graph = fragments_graph
-        self.feature_extractor = ArboristFeaturePipeline(
-            self.graph,
-            img_config.img_path,
-            tree_kwargs=tree_kwargs,
-            brightness_clip=img_config.brightness_clip,
-            patch_shape=img_config.patch_shape,
+        super().__init__(fragments_graph, img_config)
+        self.pipeline = self.feature_extractor
+        self.tree_extractor = ProposalTreeFeatureExtractor(
+            self.graph, **(tree_kwargs or {})
         )
-        self.sampler = None
+        self.feature_extractor = self.extract_features
+
+    def extract_features(self, subgraph):
+        """
+        Runs the standard feature pipeline, then attaches TreeSamples.
+
+        Parameters
+        ----------
+        subgraph : ProposalComputationGraph
+            Subgraph to extract features for.
+
+        Returns
+        -------
+        FeatureSet
+            Standard features plus ``tree_samples``.
+        """
+        return self.tree_extractor(self.pipeline(subgraph))
 
     def __iter__(self):
         for subgraph in iter(self.sampler):
