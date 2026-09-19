@@ -20,6 +20,8 @@ from arborist_experiments.split_correction.graph_extraction import (
 )
 from arborist_experiments.split_correction.models import (
     DIRECTIONAL_COLUMNS,
+    N_SKELETON_FEATURES,
+    SKELETON_COLUMNS,
     ArboristVisionHGAT,
     ProposalTreeEncoder,
     SplitDetector,

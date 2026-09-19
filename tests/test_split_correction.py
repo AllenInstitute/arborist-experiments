@@ -165,25 +165,9 @@ def test_tree_encoder_and_hgat_forward():
         assert baseline({"tree_sample": samples}).shape == (2, 1)
 
     # Minimal heterogeneous batch: 2 proposals, 3 branches, tiny patches
-    dims = get_feature_dict()
+    n_prop = 2
     patch_shape = (16, 16, 16)
-    n_prop, n_branch = 2, 3
-    x_dict = {
-        "branch": torch.randn(n_branch, dims["branch"]),
-        "proposal": torch.randn(n_prop, dims["proposal"]),
-    }
-    edge_index_dict = {
-        ("branch", "to", "branch"): torch.tensor([[0, 1], [1, 2]]),
-        ("proposal", "to", "proposal"): torch.tensor([[0, 1], [1, 0]]),
-        ("branch", "to", "proposal"): torch.tensor([[0, 1, 2], [0, 0, 1]]),
-        ("proposal", "to", "branch"): torch.tensor([[0, 0, 1], [0, 1, 2]]),
-    }
-    inputs = {
-        "x_dict": x_dict,
-        "img": torch.randn(n_prop, 2, *patch_shape),
-        "edge_index_dict": edge_index_dict,
-        "tree_samples": samples,
-    }
+    inputs = _hetero_inputs(samples, patch_shape)
     model = ArboristVisionHGAT(
         patch_shape,
         tree_embed_dim=16,
@@ -254,16 +238,13 @@ def test_spline_falls_back_for_nonleaf_endpoints():
     assert sub_lin.num_nodes() > 0 and sub_spl.num_nodes() > 0
 
 
-def test_hgat_without_directionals():
-    from arborist_experiments.split_correction import DIRECTIONAL_COLUMNS
-
-    graph, proposal = _two_fragments()
-    graph.proposals.add(frozenset((0, 21)))
-    samples = [proposal_tree_sample(graph, p, max_depth=8.0) for p in graph.list_proposals()]
+def _hetero_inputs(samples, patch_shape=(16, 16, 16)):
     dims = get_feature_dict()
-    patch_shape = (16, 16, 16)
-    inputs = {
+    rng = np.random.default_rng(0)
+    branch_curves = [np.r_[np.zeros((1, 3)), rng.normal(size=(n - 1, 3))].astype(np.float32) for n in (12, 15, 10)]
+    return {
         "x_dict": {"branch": torch.randn(3, dims["branch"]), "proposal": torch.randn(2, dims["proposal"])},
+        "branch_curves": branch_curves,
         "img": torch.randn(2, 2, *patch_shape),
         "edge_index_dict": {
             ("branch", "to", "branch"): torch.tensor([[0, 1], [1, 2]]),
@@ -273,13 +254,74 @@ def test_hgat_without_directionals():
         },
         "tree_samples": samples,
     }
-    model = ArboristVisionHGAT(
-        patch_shape, tree_embed_dim=16, use_directionals=False,
+
+
+def test_hgat_replaces_handcrafted_features():
+    import copy
+    from arborist_experiments.split_correction import N_SKELETON_FEATURES
+
+    graph, proposal = _two_fragments()
+    graph.proposals.add(frozenset((0, 21)))
+    samples = [proposal_tree_sample(graph, p, max_depth=8.0) for p in graph.list_proposals()]
+    dims = get_feature_dict()
+    patch_shape = (16, 16, 16)
+    inputs = _hetero_inputs(samples, patch_shape)
+    kw = dict(
+        tree_embed_dim=16,
         tree_encoder_kwargs=dict(curve_d_token=16, curve_n_layers=1, graph_n_layers=1),
         geometry_embed_dim=16, img_embed_dim=16, hidden_dim=32,
-    ).eval()
-    assert model.proposal_encoder.layers[0].in_features if hasattr(model.proposal_encoder, "layers") else True
-    assert len(model.feature_columns) == dims["proposal"] - len(DIRECTIONAL_COLUMNS)
+    )
+
+    # Default: nothing hand-crafted. Proposals = image patch + tree embedding,
+    # branches = shared CurveEncoder over their skeleton paths.
+    model = ArboristVisionHGAT(patch_shape, **kw).eval()
+    cfg = model.config
+    assert cfg["use_skeleton_features"] is False and cfg["use_image_profiles"] is False
+    assert cfg["use_branch_features"] is False
+    assert model.proposal_encoder is None and len(model.feature_columns) == 0
+    assert model.branch_encoder is None
     with torch.no_grad():
-        assert model(inputs).shape == (2, 1)
-    assert model.config["use_directionals"] is False
+        z_branch = model.encode_branch_curves(inputs["branch_curves"])
+        assert z_branch.shape == (3, 32)
+        assert model(copy.deepcopy(inputs)).shape == (2, 1)
+
+    # Ablation: every hand-crafted input re-enabled, behaves like NewVisionHGAT + tree
+    model = ArboristVisionHGAT(
+        patch_shape, use_skeleton_features=True, use_image_profiles=True, use_branch_features=True, **kw
+    ).eval()
+    assert len(model.feature_columns) == dims["proposal"]
+    assert model.branch_encoder is not None
+    with torch.no_grad():
+        assert model(copy.deepcopy(inputs)).shape == (2, 1)
+
+    # Partial ablation: only image profiles kept as a proposal input
+    model = ArboristVisionHGAT(patch_shape, use_image_profiles=True, **kw).eval()
+    assert len(model.feature_columns) == dims["proposal"] - N_SKELETON_FEATURES
+    assert model.feature_columns.min().item() == N_SKELETON_FEATURES
+    with torch.no_grad():
+        assert model(copy.deepcopy(inputs)).shape == (2, 1)
+
+
+def test_branch_curves_follow_edge_index_order():
+    graph, proposal = _two_fragments()
+    a = frozenset((0, 5)); b = frozenset((5, 10))
+
+    class _Mapping:
+        def __init__(self, ids):
+            self.idx_to_id = dict(enumerate(ids))
+
+    class _Graph:
+        edge_to_path = {a: np.arange(0, 6), b: np.arange(5, 11)}
+
+    class _Features:
+        proposal_index_mapping = _Mapping([proposal])
+        edge_index_mapping = _Mapping([b, a])
+        graph = _Graph()
+
+    features = ProposalTreeFeatureExtractor(graph, max_depth=8.0, min_curve_len=4)(_Features())
+    assert len(features.branch_curves) == 2
+    # Branch 0 is edge b (nodes 5..10), branch 1 is edge a (nodes 0..5)
+    assert features.branch_curves[0].shape == (6, 3) and features.branch_curves[1].shape == (6, 3)
+    assert np.allclose(features.branch_curves[0][0], 0)
+    assert np.allclose(features.branch_curves[0][1:, 0], 1.0)  # unit steps along x
+    assert len(features.tree_samples) == 1
