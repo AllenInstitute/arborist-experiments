@@ -98,15 +98,10 @@ def tail_path(graph, node, max_length):
     return path[::-1]
 
 
-# Number of node spacings of each fragment tail used for the spline fit
-SPLINE_TAIL_SPACINGS = 4
-
-
-def spline_bridge(graph, i, j, spacing):
+def spline_bridge(graph, i, j, spacing, context=16.0):
     """
     Samples a bridge between two endpoints from a cubic spline fitted through
-    the tails of both fragments. Each tail spans ``SPLINE_TAIL_SPACINGS``
-    node spacings into its fragment.
+    the tails of both fragments.
 
     Parameters
     ----------
@@ -116,6 +111,9 @@ def spline_bridge(graph, i, j, spacing):
         Proposal endpoints.
     spacing : float
         Target distance between consecutive bridge points (microns).
+    context : float, optional
+        Path length (microns) of each fragment tail used for the fit.
+        Default is 16.
 
     Returns
     -------
@@ -127,7 +125,6 @@ def spline_bridge(graph, i, j, spacing):
     pts_j : numpy.ndarray
         Points from the root toward ``j``, shape (n_j, 3).
     """
-    context = SPLINE_TAIL_SPACINGS * spacing
     tail_i = tail_path(graph, i, context)
     tail_j = tail_path(graph, j, context)[::-1]
     xyz = np.asarray(graph.node_xyz[np.array(tail_i + tail_j)], dtype=float)
@@ -178,6 +175,7 @@ def proposal_rooted_subgraph(
     depth,
     node_spacing=None,
     bridge_mode="linear",
+    spline_context=16.0,
 ):
     """
     Builds a rooted subgraph centered on a proposal.
@@ -207,6 +205,9 @@ def proposal_rooted_subgraph(
         through the tails of both fragments and samples the bridge from it,
         with the root at the bridge's arc-length midpoint. Default is
         "linear".
+    spline_context : float, optional
+        Path length (microns) of each fragment tail used for the spline fit.
+        Default is 16.
 
     Returns
     -------
@@ -227,7 +228,7 @@ def proposal_rooted_subgraph(
 
     # Bridge geometry
     if bridge_mode == "spline":
-        center, pts_i, pts_j = spline_bridge(graph, i, j, spacing)
+        center, pts_i, pts_j = spline_bridge(graph, i, j, spacing, spline_context)
     else:
         center, pts_i, pts_j = _linear_bridge(
             graph.node_xyz[i], graph.node_xyz[j], spacing
@@ -285,6 +286,7 @@ def proposal_tree_sample(
     min_curve_len=10,
     node_spacing=None,
     bridge_mode="linear",
+    spline_context=16.0,
     transform=None,
     graph_transform=None,
 ):
@@ -307,6 +309,8 @@ def proposal_tree_sample(
         Spacing of bridge nodes. Default is ``graph.node_spacing``.
     bridge_mode : {"linear", "spline"}, optional
         See ``proposal_rooted_subgraph``. Default is "linear".
+    spline_context : float, optional
+        See ``proposal_rooted_subgraph``. Default is 16.
     transform : callable, optional
         Applied to each curve's raw xyz array before differencing.
     graph_transform : callable, optional
@@ -326,6 +330,7 @@ def proposal_tree_sample(
         max_depth,
         node_spacing=node_spacing,
         bridge_mode=bridge_mode,
+        spline_context=spline_context,
     )
     if graph_transform:
         subgraph.node_xyz = graph_transform(subgraph.node_xyz)

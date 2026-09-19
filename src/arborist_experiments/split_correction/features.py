@@ -51,6 +51,8 @@ class ProposalTreeFeatureExtractor:
     bridge_mode : {"linear", "spline"}, optional
         Bridge geometry, see ``proposal_rooted_subgraph``. Default is
         "linear".
+    spline_context : float, optional
+        Fragment tail length (microns) used for the spline fit. Default is 16.
     transform : callable, optional
         Applied to each curve's raw xyz array before differencing.
     graph_transform : callable, optional
@@ -64,6 +66,7 @@ class ProposalTreeFeatureExtractor:
         min_curve_len=10,
         node_spacing=None,
         bridge_mode="linear",
+        spline_context=16.0,
         transform=None,
         graph_transform=None,
     ):
@@ -72,6 +75,7 @@ class ProposalTreeFeatureExtractor:
         self.min_curve_len = min_curve_len
         self.node_spacing = node_spacing
         self.bridge_mode = bridge_mode
+        self.spline_context = spline_context
         self.transform = transform
         self.graph_transform = graph_transform
 
@@ -98,6 +102,7 @@ class ProposalTreeFeatureExtractor:
                 min_curve_len=self.min_curve_len,
                 node_spacing=self.node_spacing,
                 bridge_mode=self.bridge_mode,
+                spline_context=self.spline_context,
                 transform=self.transform,
                 graph_transform=self.graph_transform,
             )
