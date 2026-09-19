@@ -4,10 +4,10 @@ Created on Fri Sep 19 2026
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-Arborist as a third modality for split correction. ProposalTreeEncoder turns
+Arborist skeleton embeddings for split correction. ProposalTreeEncoder turns
 the rooted subgraph around each proposal into a latent vector, and
-ArboristVisionHGAT fuses that vector with the geometric and image embeddings
-that NewVisionHGAT already computes for each proposal node.
+ArboristVisionHGAT fuses that vector with the image patch embedding of
+NewVisionHGAT in place of its hand-crafted features.
 
 """
 
@@ -17,16 +17,6 @@ import torch.nn as nn
 from arborist.models.arborist import Arborist
 from neuron_proofreader.models.new_gnn_models import NewVisionHGAT
 from neuron_proofreader.models.simple_models import FeedForwardNet
-from neuron_proofreader.split_proofreading import split_feature_extraction
-
-# Column layout of the proposal feature vector built by FeaturePipeline:
-#   0 is_leaf2leaf | 1 count_nearby_leafs | 2 length / search_radius
-#   3-4 radius_i, radius_j | 5-16 directionals at depths 16, 32, 64, 128
-#   (3 dot products each) | 17-66 image intensity profiles along the two
-#   branches and the proposal line
-N_SKELETON_FEATURES = 17
-SKELETON_COLUMNS = list(range(N_SKELETON_FEATURES))
-DIRECTIONAL_COLUMNS = list(range(5, 17))
 
 
 # --- Tree Encoder ---
@@ -36,17 +26,13 @@ class ProposalTreeEncoder(nn.Module):
 
     Each sample is passed through Arborist (CurveEncoder + GraphTransformer).
     The two curves incident to the root, one per side of the proposal, are
-    mean-pooled to form the proposal embedding. With ``use_tree_context`` the
-    mean over all curves is concatenated and projected back to ``latent_dim``
-    so the embedding also carries the surrounding morphology.
+    mean-pooled to form the proposal embedding. The GraphTransformer has
+    already contextualized them against the rest of the subgraph.
 
     Parameters
     ----------
     latent_dim : int, optional
         Arborist latent dimension and output embedding size. Default is 64.
-    use_tree_context : bool, optional
-        If True, concatenate the global tree embedding to the root embedding
-        and project to ``latent_dim``. Default is True.
     pretrained_curve_encoder_path : str, optional
         Path to a CurveAutoencoder checkpoint whose encoder weights are
         loaded into the CurveEncoder. Default is None.
@@ -62,25 +48,13 @@ class ProposalTreeEncoder(nn.Module):
     def __init__(
         self,
         latent_dim=64,
-        use_tree_context=True,
         pretrained_curve_encoder_path=None,
         freeze_curve_encoder=True,
         **arborist_kwargs,
     ):
         super().__init__()
-        self.config = {
-            "latent_dim": latent_dim,
-            "use_tree_context": use_tree_context,
-            **arborist_kwargs,
-        }
-        self.latent_dim = latent_dim
-        self.use_tree_context = use_tree_context
+        self.config = {"latent_dim": latent_dim, **arborist_kwargs}
         self.arborist = Arborist(latent_dim=latent_dim, **arborist_kwargs)
-        if use_tree_context:
-            self.proj = nn.Linear(2 * latent_dim, latent_dim)
-        else:
-            self.proj = nn.Identity()
-
         if pretrained_curve_encoder_path is not None:
             load_pretrained_curve_encoder(
                 self.arborist, pretrained_curve_encoder_path
@@ -112,17 +86,9 @@ class ProposalTreeEncoder(nn.Module):
         zs = []
         for sample in tree_samples:
             _, z_curves = self.arborist.encode(sample)
-            z_tree = z_curves.mean(dim=0)
-            if sample.root_curve_indices:
-                idx = torch.as_tensor(
-                    sample.root_curve_indices, device=z_curves.device
-                )
-                z_root = z_curves[idx].mean(dim=0)
-            else:
-                z_root = z_tree
-            z = torch.cat([z_root, z_tree]) if self.use_tree_context else z_root
-            zs.append(z)
-        return self.proj(torch.stack(zs))
+            idx = sample.root_curve_indices or range(len(z_curves))
+            zs.append(z_curves[list(idx)].mean(dim=0))
+        return torch.stack(zs)
 
 
 def load_pretrained_curve_encoder(arborist, path):
@@ -166,9 +132,8 @@ class SplitDetector(nn.Module):
     dropout : float, optional
         Dropout probability inside the MLP head. Default is 0.1.
     **encoder_kwargs
-        Forwarded to ProposalTreeEncoder (use_tree_context,
-        pretrained_curve_encoder_path, freeze_curve_encoder and Arborist
-        kwargs).
+        Forwarded to ProposalTreeEncoder (pretrained_curve_encoder_path,
+        freeze_curve_encoder and Arborist kwargs).
     """
 
     def __init__(self, latent_dim=64, hidden_dim=128, dropout=0.1, **encoder_kwargs):
@@ -231,8 +196,8 @@ class ArboristVisionHGAT(NewVisionHGAT):
     geometry enters the model. Branch nodes are relays: they start from one
     learned vector and acquire their state through message passing from the
     proposals they touch, so proposals sharing a fragment can still exchange
-    information. The hand-crafted proposal inputs of NewVisionHGAT can be
-    re-enabled for ablations; branch nodes are always relays.
+    information. The hand-crafted proposal and branch features in the batch
+    are ignored.
 
     The forward pass expects ``input_dict["tree_samples"]`` (TreeSamples in
     proposal-index order) in addition to the keys NewVisionHGAT consumes.
@@ -247,18 +212,10 @@ class ArboristVisionHGAT(NewVisionHGAT):
         Extra keyword arguments for ProposalTreeEncoder (e.g.
         pretrained_curve_encoder_path, freeze_curve_encoder, curve_n_layers).
         Default is None.
-    use_skeleton_features : bool, optional
-        If True, the 17 hand-crafted skeleton features of each proposal
-        (leaf flags, nearby-leaf count, length, radii, directionals) are kept
-        as an input alongside the Arborist embedding. Default is False: the
-        embedding replaces them entirely.
-    use_image_profiles : bool, optional
-        If True, the hand-crafted image intensity profiles sampled along the
-        branches and proposal line are kept as a proposal input. Default is
-        False; the CNN patch embedding is the image modality.
     **hgat_kwargs
-        Forwarded to NewVisionHGAT (concat_heads, geometry_embed_dim, heads,
-        hidden_dim, img_embed_dim, n_layers).
+        Forwarded to NewVisionHGAT (concat_heads, heads, hidden_dim,
+        img_embed_dim, n_layers). ``geometry_embed_dim`` is accepted but
+        unused since there is no geometric feature encoder.
     """
 
     def __init__(
@@ -266,8 +223,6 @@ class ArboristVisionHGAT(NewVisionHGAT):
         patch_shape,
         tree_embed_dim=64,
         tree_encoder_kwargs=None,
-        use_skeleton_features=False,
-        use_image_profiles=False,
         **hgat_kwargs,
     ):
         super().__init__(patch_shape, **hgat_kwargs)
@@ -276,8 +231,6 @@ class ArboristVisionHGAT(NewVisionHGAT):
             {
                 "model_type": "ArboristVisionHGAT",
                 "tree_embed_dim": tree_embed_dim,
-                "use_skeleton_features": use_skeleton_features,
-                "use_image_profiles": use_image_profiles,
                 "tree_encoder_kwargs": {
                     k: v
                     for k, v in tree_encoder_kwargs.items()
@@ -286,30 +239,15 @@ class ArboristVisionHGAT(NewVisionHGAT):
             }
         )
 
-        # Select which columns of the proposal feature vector survive. By
-        # default the hand-crafted skeleton features are dropped and the
-        # Arborist embedding takes their place; image profiles are kept.
-        n_features = split_feature_extraction.get_feature_dict()["proposal"]
-        keep = []
-        if use_skeleton_features:
-            keep += SKELETON_COLUMNS
-        if use_image_profiles:
-            keep += list(range(N_SKELETON_FEATURES, n_features))
-        self.use_skeleton_features = use_skeleton_features
-        self.use_image_profiles = use_image_profiles
-        self.register_buffer("feature_columns", torch.tensor(keep, dtype=torch.long), persistent=False)
-        geometry_embed_dim = self.config["geometry_embed_dim"] if keep else 0
-        if keep and len(keep) != n_features:
-            self.proposal_encoder = FeedForwardNet(len(keep), geometry_embed_dim, 3)
-        elif not keep:
-            self.proposal_encoder = None
+        # No hand-crafted proposal features: the tree embedding replaces them
+        self.proposal_encoder = None
 
-        # Third modality and a fusion layer wide enough to take it
+        # Skeleton modality and a fusion layer over image + tree embeddings
         self.tree_encoder = ProposalTreeEncoder(
             latent_dim=tree_embed_dim, **tree_encoder_kwargs
         )
         self.fusion = FeedForwardNet(
-            self.config["img_embed_dim"] + geometry_embed_dim + tree_embed_dim,
+            self.config["img_embed_dim"] + tree_embed_dim,
             self.config["hidden_dim"],
             2,
         )
@@ -334,12 +272,8 @@ class ArboristVisionHGAT(NewVisionHGAT):
             self.branch_relay.to(x_img.dtype).unsqueeze(0).expand(n_branches, -1)
         )
 
-        # Fuse the surviving proposal features, image and tree embeddings
-        parts = [x_img, x_tree]
-        if self.proposal_encoder is not None:
-            x_feat = x_dict["proposal"].index_select(1, self.feature_columns)
-            parts.insert(0, self.proposal_encoder(x_feat))
-        x_dict["proposal"] = self.fusion(torch.cat(parts, dim=1))
+        # Fuse image and tree embeddings
+        x_dict["proposal"] = self.fusion(torch.cat((x_img, x_tree), dim=1))
 
         # Message passing with residual connections
         for gat, proj in zip(self.gats, self.head_projs):

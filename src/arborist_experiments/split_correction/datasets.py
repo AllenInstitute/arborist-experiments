@@ -6,7 +6,7 @@ Created on Fri Sep 19 2026
 
 Dataset utilities for training a split-correction model on graph structure
 only. Each example is a proposal from a neuron_proofreader ProposalGraph,
-rendered as an Arborist TreeSample rooted at the proposal midpoint.
+rendered as an Arborist TreeSample rooted at the proposal center.
 
 """
 
@@ -18,7 +18,7 @@ from arborist.utils.util import write_json
 from neuron_proofreader.utils.ml_util import TensorDict
 
 from arborist_experiments.split_correction.graph_extraction import (
-    proposal_tree_sample,
+    ProposalTreeFeatureExtractor,
 )
 
 
@@ -33,54 +33,32 @@ class ProposalTreeDataset(Dataset):
     ----------
     graph : ProposalGraph
         Graph with proposals generated and ``gt_accepts`` populated.
+    tree_extractor : ProposalTreeFeatureExtractor, optional
+        Extraction settings for the rooted subgraphs. Default is
+        ``ProposalTreeFeatureExtractor()``.
     proposals : Iterable[Frozenset[int]], optional
         Proposals to include. Default is ``graph.list_proposals()``.
-    max_depth : float, optional
-        Subgraph extraction radius in microns from the proposal midpoint.
-        Default is 100.
-    min_curve_len : int, optional
-        Minimum number of points per curve; shorter curves are zero-padded.
-        Should match the curve_segment_len used in CurveEncoder. Default is
-        10.
-    node_spacing : float, optional
-        Spacing of bridge nodes. Default is ``graph.node_spacing``.
     class_ratios : Tuple[float, float], optional
         (positive_ratio, negative_ratio) used for rebalancing. Default is
         (0.5, 0.5).
     rebalance_classes : bool, optional
         If True, negatives are randomly subsampled each epoch to match the
         target ratio. Default is True.
-    transform : callable, optional
-        Applied to each curve's raw xyz array before differencing.
-    graph_transform : callable, optional
-        Applied to the subgraph's node_xyz array before decomposition.
     """
 
     def __init__(
         self,
         graph,
+        tree_extractor=None,
         proposals=None,
-        max_depth=100,
-        min_curve_len=10,
-        node_spacing=None,
-        bridge_mode="linear",
-        spline_context=16.0,
         class_ratios=(0.5, 0.5),
         rebalance_classes=True,
-        transform=None,
-        graph_transform=None,
     ):
         super().__init__()
         self.graph = graph
-        self.max_depth = max_depth
-        self.min_curve_len = min_curve_len
-        self.node_spacing = node_spacing
-        self.bridge_mode = bridge_mode
-        self.spline_context = spline_context
+        self.tree_extractor = tree_extractor or ProposalTreeFeatureExtractor()
         self.class_ratios = class_ratios
         self.rebalance_classes = rebalance_classes
-        self.transform = transform
-        self.graph_transform = graph_transform
 
         proposals = list(proposals) if proposals is not None else graph.list_proposals()
         gt_accepts = getattr(graph, "gt_accepts", set())
@@ -88,17 +66,9 @@ class ProposalTreeDataset(Dataset):
         self.negatives = [p for p in proposals if p not in gt_accepts]
 
         self.config = {
-            "max_depth": max_depth,
-            "min_curve_len": min_curve_len,
-            "node_spacing": node_spacing,
-            "bridge_mode": bridge_mode,
-            "spline_context": spline_context,
+            **self.tree_extractor.config,
             "class_ratios": list(class_ratios),
             "rebalance_classes": rebalance_classes,
-            "transform": type(transform).__name__ if transform else None,
-            "graph_transform": (
-                type(graph_transform).__name__ if graph_transform else None
-            ),
         }
         self._build_index()
 
@@ -125,18 +95,7 @@ class ProposalTreeDataset(Dataset):
     # --- Dataset Interface ---
     def __getitem__(self, i):
         proposal, label = self._index[i]
-        sample = proposal_tree_sample(
-            self.graph,
-            proposal,
-            self.max_depth,
-            min_curve_len=self.min_curve_len,
-            node_spacing=self.node_spacing,
-            bridge_mode=self.bridge_mode,
-            spline_context=self.spline_context,
-            transform=self.transform,
-            graph_transform=self.graph_transform,
-        )
-        return sample, label
+        return self.tree_extractor(self.graph, proposal), label
 
     def __len__(self):
         return len(self._index)
@@ -167,38 +126,20 @@ class ProposalSearchDataset(Dataset):
     ----------
     graph : ProposalGraph
         Graph with proposals generated.
-    max_depth : float
-        Subgraph extraction radius in microns from the proposal midpoint.
-    min_curve_len : int, optional
-        Minimum number of points per curve. Default is 10.
-    node_spacing : float, optional
-        Spacing of bridge nodes. Default is ``graph.node_spacing``.
+    tree_extractor : ProposalTreeFeatureExtractor, optional
+        Extraction settings for the rooted subgraphs. Default is
+        ``ProposalTreeFeatureExtractor()``.
     """
 
-    def __init__(
-        self, graph, max_depth, min_curve_len=10, node_spacing=None, bridge_mode="linear", spline_context=16.0
-    ):
+    def __init__(self, graph, tree_extractor=None):
         super().__init__()
         self.graph = graph
-        self.max_depth = max_depth
-        self.min_curve_len = min_curve_len
-        self.node_spacing = node_spacing
-        self.bridge_mode = bridge_mode
-        self.spline_context = spline_context
+        self.tree_extractor = tree_extractor or ProposalTreeFeatureExtractor()
         self.proposals = graph.list_proposals()
         self.collate_fn = collate_search_samples
 
     def __getitem__(self, i):
-        sample = proposal_tree_sample(
-            self.graph,
-            self.proposals[i],
-            self.max_depth,
-            min_curve_len=self.min_curve_len,
-            node_spacing=self.node_spacing,
-            bridge_mode=self.bridge_mode,
-            spline_context=self.spline_context,
-        )
-        return i, sample
+        return i, self.tree_extractor(self.graph, self.proposals[i])
 
     def __len__(self):
         return len(self.proposals)

@@ -8,19 +8,15 @@ from arborist_experiments.split_correction.features import (
     ArboristFragmentsDataset,
     ArboristFragmentsLoader,
     ArboristHeteroGraphData,
-    ProposalTreeFeatureExtractor,
 )
 from arborist_experiments.split_correction.graph_extraction import (
+    ProposalTreeFeatureExtractor,
     bridge_points,
     proposal_rooted_subgraph,
-    proposal_tree_sample,
     spline_bridge,
     tail_path,
 )
 from arborist_experiments.split_correction.models import (
-    DIRECTIONAL_COLUMNS,
-    N_SKELETON_FEATURES,
-    SKELETON_COLUMNS,
     ArboristVisionHGAT,
     ProposalTreeEncoder,
     SplitDetector,

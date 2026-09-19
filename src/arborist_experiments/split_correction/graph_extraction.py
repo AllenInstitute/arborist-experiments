@@ -279,32 +279,20 @@ def proposal_rooted_subgraph(
     return subgraph, (node_mapping[i], node_mapping[j])
 
 
-def proposal_tree_sample(
-    graph,
-    proposal,
-    max_depth,
-    min_curve_len=10,
-    node_spacing=None,
-    bridge_mode="linear",
-    spline_context=16.0,
-    transform=None,
-    graph_transform=None,
-):
+class ProposalTreeFeatureExtractor:
     """
-    Converts a proposal into an Arborist TreeSample.
+    Turns a proposal into an Arborist TreeSample. Holds the extraction
+    settings only, so one instance can serve every fragments graph.
 
     Parameters
     ----------
-    graph : SkeletonGraph
-        Fragments graph containing the proposal endpoints.
-    proposal : Frozenset[int]
-        Pair of node IDs forming the proposal.
-    max_depth : float
+    max_depth : float, optional
         Subgraph depth in microns, measured as path length from the proposal
-        center (the root).
+        center (the root). Default is 100.
     min_curve_len : int, optional
         Curves shorter than this are zero-padded so CurveEncoder produces at
-        least one segment token. Default is 10.
+        least one segment token. Should match ``curve_segment_len``. Default
+        is 10.
     node_spacing : float, optional
         Spacing of bridge nodes. Default is ``graph.node_spacing``.
     bridge_mode : {"linear", "spline"}, optional
@@ -316,44 +304,86 @@ def proposal_tree_sample(
     graph_transform : callable, optional
         Applied to the full node_xyz array of the subgraph before
         decomposition, so all curves share one rigid transform.
-
-    Returns
-    -------
-    TreeSample
-        Curves are first-order differences with a leading zero row.
-        ``root_curve_indices`` marks the curves incident to the root, i.e.
-        the two sides of the proposal.
     """
-    subgraph, _ = proposal_rooted_subgraph(
-        graph,
-        proposal,
-        max_depth,
-        node_spacing=node_spacing,
-        bridge_mode=bridge_mode,
-        spline_context=spline_context,
-    )
-    if graph_transform:
-        subgraph.node_xyz = graph_transform(subgraph.node_xyz)
-    _, paths, topo_edge_index = topological_decomposition(subgraph)
 
-    curves = []
-    for path in paths:
-        xyz = subgraph.node_xyz[path].copy()
-        if transform:
-            xyz = transform(xyz)
-        xyz -= xyz[0]
-        xyz[1:] -= xyz[:-1].copy()
-        if len(xyz) < min_curve_len:
-            pad = np.zeros((min_curve_len - len(xyz), 3), dtype=xyz.dtype)
-            xyz = np.concatenate([xyz, pad], axis=0)
-        curves.append(xyz)
+    def __init__(
+        self,
+        max_depth=100,
+        min_curve_len=10,
+        node_spacing=None,
+        bridge_mode="linear",
+        spline_context=16.0,
+        transform=None,
+        graph_transform=None,
+    ):
+        self.max_depth = max_depth
+        self.min_curve_len = min_curve_len
+        self.node_spacing = node_spacing
+        self.bridge_mode = bridge_mode
+        self.spline_context = spline_context
+        self.transform = transform
+        self.graph_transform = graph_transform
 
-    edge_index = _build_line_graph_edge_index(topo_edge_index)
-    root_curve_indices = [
-        k for k, (src, _) in enumerate(topo_edge_index) if src == 0
-    ]
-    return TreeSample(
-        curves=curves,
-        edge_index=edge_index,
-        root_curve_indices=root_curve_indices,
-    )
+    @property
+    def config(self):
+        return {
+            "max_depth": self.max_depth,
+            "min_curve_len": self.min_curve_len,
+            "node_spacing": self.node_spacing,
+            "bridge_mode": self.bridge_mode,
+            "spline_context": self.spline_context,
+            "transform": type(self.transform).__name__ if self.transform else None,
+            "graph_transform": (
+                type(self.graph_transform).__name__ if self.graph_transform else None
+            ),
+        }
+
+    def __call__(self, graph, proposal):
+        """
+        Parameters
+        ----------
+        graph : SkeletonGraph
+            Fragments graph containing the proposal endpoints.
+        proposal : Frozenset[int]
+            Pair of node IDs forming the proposal.
+
+        Returns
+        -------
+        TreeSample
+            Curves are first-order differences with a leading zero row.
+            ``root_curve_indices`` marks the curves incident to the root,
+            i.e. the two sides of the proposal.
+        """
+        subgraph, _ = proposal_rooted_subgraph(
+            graph,
+            proposal,
+            self.max_depth,
+            node_spacing=self.node_spacing,
+            bridge_mode=self.bridge_mode,
+            spline_context=self.spline_context,
+        )
+        if self.graph_transform:
+            subgraph.node_xyz = self.graph_transform(subgraph.node_xyz)
+        _, paths, topo_edge_index = topological_decomposition(subgraph)
+
+        curves = []
+        for path in paths:
+            xyz = subgraph.node_xyz[path].copy()
+            if self.transform:
+                xyz = self.transform(xyz)
+            xyz -= xyz[0]
+            xyz[1:] -= xyz[:-1].copy()
+            if len(xyz) < self.min_curve_len:
+                pad = np.zeros((self.min_curve_len - len(xyz), 3), dtype=xyz.dtype)
+                xyz = np.concatenate([xyz, pad], axis=0)
+            curves.append(xyz)
+
+        edge_index = _build_line_graph_edge_index(topo_edge_index)
+        root_curve_indices = [
+            k for k, (src, _) in enumerate(topo_edge_index) if src == 0
+        ]
+        return TreeSample(
+            curves=curves,
+            edge_index=edge_index,
+            root_curve_indices=root_curve_indices,
+        )

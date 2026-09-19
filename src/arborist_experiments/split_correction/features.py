@@ -6,12 +6,8 @@ Created on Fri Sep 19 2026
 
 Hooks that attach proposal-rooted TreeSamples to the split-correction data
 pipeline so ArboristVisionHGAT receives them alongside the image patches.
-
-ArboristFragmentsDataset chains a ProposalTreeFeatureExtractor onto the
-standard FeaturePipeline, and ArboristHeteroGraphData / ArboristFragmentsLoader
-carry the resulting TreeSamples into the model inputs. Each batch's
-TreeSamples are ordered by proposal index, matching the row order of the
-proposal feature matrix and image patches.
+Each batch's TreeSamples are ordered by proposal index, matching the row
+order of the proposal feature matrix and image patches.
 
 """
 
@@ -24,83 +20,8 @@ from neuron_proofreader.split_proofreading.split_feature_extraction import (
 )
 
 from arborist_experiments.split_correction.graph_extraction import (
-    proposal_tree_sample,
+    ProposalTreeFeatureExtractor,
 )
-
-
-class ProposalTreeFeatureExtractor:
-    """
-    Builds one TreeSample per proposal of a computation subgraph.
-
-    Parameters
-    ----------
-    graph : ProposalGraph
-        Full fragments graph, used for skeleton traversal.
-    max_depth : float, optional
-        Subgraph extraction radius in microns from the proposal midpoint.
-        Default is 100.
-    min_curve_len : int, optional
-        Minimum number of points per curve; shorter curves are zero-padded.
-        Should match the curve_segment_len used in CurveEncoder. Default is
-        10.
-    node_spacing : float, optional
-        Spacing of bridge nodes. Default is ``graph.node_spacing``.
-    bridge_mode : {"linear", "spline"}, optional
-        Bridge geometry, see ``proposal_rooted_subgraph``. Default is
-        "linear".
-    spline_context : float, optional
-        Fragment tail length (microns) used for the spline fit. Default is 16.
-    transform : callable, optional
-        Applied to each curve's raw xyz array before differencing.
-    graph_transform : callable, optional
-        Applied to the subgraph's node_xyz array before decomposition.
-    """
-
-    def __init__(
-        self,
-        graph,
-        max_depth=100,
-        min_curve_len=10,
-        node_spacing=None,
-        bridge_mode="linear",
-        spline_context=16.0,
-        transform=None,
-        graph_transform=None,
-    ):
-        self.graph = graph
-        self.max_depth = max_depth
-        self.min_curve_len = min_curve_len
-        self.node_spacing = node_spacing
-        self.bridge_mode = bridge_mode
-        self.spline_context = spline_context
-        self.transform = transform
-        self.graph_transform = graph_transform
-
-    def __call__(self, features):
-        """
-        Attaches ``features.tree_samples`` in proposal-index order.
-
-        Parameters
-        ----------
-        features : FeatureSet
-            Feature set whose ``proposal_index_mapping`` fixes the order.
-        """
-        idx_to_id = features.proposal_index_mapping.idx_to_id
-        features.tree_samples = [
-            proposal_tree_sample(
-                self.graph,
-                idx_to_id[idx],
-                self.max_depth,
-                min_curve_len=self.min_curve_len,
-                node_spacing=self.node_spacing,
-                bridge_mode=self.bridge_mode,
-                spline_context=self.spline_context,
-                transform=self.transform,
-                graph_transform=self.graph_transform,
-            )
-            for idx in range(len(idx_to_id))
-        ]
-        return features
 
 
 class ArboristHeteroGraphData(HeteroGraphData):
@@ -121,7 +42,7 @@ class ArboristHeteroGraphData(HeteroGraphData):
 
 class ArboristFragmentsDataset(FragmentsDataset):
     """
-    FragmentsDataset whose feature extractor also attaches one TreeSample
+    FragmentsDataset whose feature extraction also attaches one TreeSample
     per proposal.
 
     Parameters
@@ -130,24 +51,22 @@ class ArboristFragmentsDataset(FragmentsDataset):
         Graph with proposals generated.
     img_config : ImageConfig
         Image configuration.
-    tree_kwargs : dict, optional
-        Keyword arguments for ProposalTreeFeatureExtractor (max_depth,
-        min_curve_len, node_spacing, bridge_mode, spline_context, transform,
-        graph_transform).
+    tree_extractor : ProposalTreeFeatureExtractor, optional
+        Extraction settings for the rooted subgraphs. Default is
+        ``ProposalTreeFeatureExtractor()``.
     """
 
-    def __init__(self, fragments_graph, img_config, tree_kwargs=None):
+    def __init__(self, fragments_graph, img_config, tree_extractor=None):
         # Call parent class
         super().__init__(fragments_graph, img_config)
 
         # Instance attributes
-        self.tree_extractor = ProposalTreeFeatureExtractor(
-            self.graph, **(tree_kwargs or {})
-        )
+        self.tree_extractor = tree_extractor or ProposalTreeFeatureExtractor()
 
     def extract_features(self, subgraph):
         """
-        Runs the standard feature pipeline, then attaches TreeSamples.
+        Runs the standard feature pipeline, then attaches TreeSamples in
+        proposal-index order.
 
         Parameters
         ----------
@@ -159,7 +78,13 @@ class ArboristFragmentsDataset(FragmentsDataset):
         FeatureSet
             Standard features plus ``tree_samples``.
         """
-        return self.tree_extractor(self.feature_extractor(subgraph))
+        features = self.feature_extractor(subgraph)
+        idx_to_id = features.proposal_index_mapping.idx_to_id
+        features.tree_samples = [
+            self.tree_extractor(self.graph, idx_to_id[idx])
+            for idx in range(len(idx_to_id))
+        ]
+        return features
 
     def __iter__(self):
         for subgraph in iter(self.sampler):
