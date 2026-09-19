@@ -114,20 +114,22 @@ class MergeDetector(nn.Module):
             param.requires_grad = True
 
     @torch._dynamo.disable
-    def forward(self, samples):
+    def forward(self, x):
         """
         Encodes a batch of rooted subgraphs and returns merge logits.
 
         Parameters
         ----------
-        samples : List[TreeSample]
-            Batch of rooted subgraphs as returned by MergeGraphDataset.
+        x : TensorDict or List[TreeSample]
+            Batch of rooted subgraphs. During inference x is a TensorDict with
+            a "tree_sample" key; during training x may be a plain list.
 
         Returns
         -------
         torch.Tensor
             Logits of shape (B, 1). Apply sigmoid for probabilities.
         """
+        samples = x["tree_sample"] if isinstance(x, dict) else x
         z_trees = []
         for sample in samples:
             _, z_curves = self.encoder.encode(sample)
