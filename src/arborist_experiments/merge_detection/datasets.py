@@ -10,14 +10,17 @@ Dataset utilities for training a merge-detection model on graph structure only.
 
 import os
 
+import networkx as nx
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from neuron_proofreader.utils.ml_util import TensorDict
+
 
 class GraphSearchDataset(Dataset):
     """
-    Unlabelled dataset over all branching nodes of a FragmentsGraph.
+    Unlabelled dataset over candidate nodes of a FragmentsGraph.
 
     Used during evaluation: each item is a (node_id, TreeSample) pair so the
     caller can look up xyz coordinates after running inference.
@@ -31,14 +34,52 @@ class GraphSearchDataset(Dataset):
     min_curve_len : int, optional
         Minimum number of points per curve; shorter curves are zero-padded.
         Default is 10.
+    search_type : str, optional
+        Strategy for selecting candidate nodes. "sparse" visits only branching
+        nodes (degree >= 3); "dense" steps through each connected component
+        via DFS at intervals of ``step_size`` microns, also including branching
+        nodes. Default is "sparse".
+    step_size : float, optional
+        Spacing between sampled nodes in dense mode (microns). Ignored when
+        search_type is "sparse". Default is 40.
     """
 
-    def __init__(self, graph, depth, min_curve_len=10):
+    def __init__(self, graph, depth, min_curve_len=10, search_type="sparse", step_size=40):
         super().__init__()
         self.graph = graph
         self.depth = depth
         self.min_curve_len = min_curve_len
-        self.nodes = list(graph.branching_nodes())
+        self.search_type = search_type
+        if search_type == "sparse":
+            self.nodes = list(graph.branching_nodes())
+        elif search_type == "dense":
+            self.nodes = self._collect_dense_nodes(step_size)
+        else:
+            raise ValueError(f"Unknown search_type: {search_type!r}. Expected 'sparse' or 'dense'.")
+        self.patch_shape = [depth, depth, depth]
+        self.collate_fn = collate_fn
+
+    def estimate_iterations(self):
+        return len(self.nodes)
+
+    def node_segment_id(self, i):
+        return self.graph.node_component_id[i]
+
+    def _collect_dense_nodes(self, step_size):
+        nodes = []
+        for component in nx.connected_components(self.graph):
+            leaves = [n for n in component if self.graph.degree[n] == 1]
+            if not leaves:
+                continue
+            root = leaves[0]
+            last_node = root
+            for i, j in nx.dfs_edges(self.graph, source=root):
+                is_branching = self.graph.degree[j] >= 3
+                is_next = self.graph.dist(last_node, j) >= step_size - 2
+                if is_next or is_branching:
+                    last_node = j
+                    nodes.append(j)
+        return nodes
 
     def __len__(self):
         return len(self.nodes)
@@ -63,10 +104,10 @@ class GraphSearchDataset(Dataset):
         return node, TreeSample(curves=curves, edge_index=edge_index, root_curve_indices=root_curve_indices)
 
 
-def collate_search_samples(batch):
-    nodes = [item[0] for item in batch]
+def collate_fn(batch):
+    nodes = torch.tensor([item[0] for item in batch])
     samples = [item[1] for item in batch]
-    return nodes, samples
+    return nodes, TensorDict({"tree_sample": samples})
 
 
 from arborist.data.datasets import TreeSample, _build_line_graph_edge_index
