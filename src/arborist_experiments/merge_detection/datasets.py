@@ -150,6 +150,10 @@ class MergeGraphDataset(Dataset):
     transform : callable, optional
         Applied to each curve's raw xyz array before differencing, e.g.
         CurveTransforms for augmentation. Default is None.
+    nonmerge_sampler : callable, optional
+        Zero-argument callable returning a list of node IDs to use as extra
+        negatives. Called on every index (re)build, so negatives are drawn
+        fresh each epoch. Default is None.
     """
 
     def __init__(
@@ -162,11 +166,13 @@ class MergeGraphDataset(Dataset):
         class_ratios=(0.5, 0.5),
         rebalance_classes=True,
         transform=None,
+        nonmerge_sampler=None,
     ):
         super().__init__()
         self.graph = graph
         self.merge_nodes = list(merge_nodes)
         self.nonmerge_nodes = list(nonmerge_nodes)
+        self.nonmerge_sampler = nonmerge_sampler
         self.max_depth = max_depth
         self.min_curve_len = min_curve_len
         self.class_ratios = class_ratios
@@ -178,6 +184,7 @@ class MergeGraphDataset(Dataset):
             "class_ratios": list(class_ratios),
             "rebalance_classes": rebalance_classes,
             "transform": type(transform).__name__ if transform else None,
+            "nonmerge_sampler": nonmerge_sampler is not None,
         }
         self._build_index()
 
@@ -186,15 +193,18 @@ class MergeGraphDataset(Dataset):
         """Builds (node, label) index, resampling negatives if configured."""
         pos_ratio, neg_ratio = self.class_ratios
         n_pos = len(self.merge_nodes)
-        n_neg = len(self.nonmerge_nodes)
+        nonmerge_nodes = self.nonmerge_nodes
+        if self.nonmerge_sampler is not None:
+            nonmerge_nodes = nonmerge_nodes + list(self.nonmerge_sampler())
+        n_neg = len(nonmerge_nodes)
 
         if self.rebalance_classes and n_pos > 0 and n_neg > 0:
             n_target = int(n_pos * neg_ratio / pos_ratio)
             n_sample = min(n_target, n_neg)
             neg_idxs = np.random.choice(n_neg, size=n_sample, replace=False)
-            neg_sample = [self.nonmerge_nodes[i] for i in neg_idxs]
+            neg_sample = [nonmerge_nodes[i] for i in neg_idxs]
         else:
-            neg_sample = self.nonmerge_nodes
+            neg_sample = nonmerge_nodes
 
         self._index = (
             [(node, 1) for node in self.merge_nodes]
