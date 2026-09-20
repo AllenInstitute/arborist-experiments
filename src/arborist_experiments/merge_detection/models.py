@@ -4,8 +4,8 @@ Created on Sun August 10 2026
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-MergeDetector: Arborist encoder + two-layer MLP classification head for
-detecting merge errors from graph structure alone.
+ArboristMergeDetector: Arborist encoder + two-layer MLP classification head
+for detecting merge errors from graph structure alone.
 """
 
 import torch
@@ -15,7 +15,7 @@ from arborist.models.arborist import Arborist
 from arborist.utils.util import write_json
 
 
-class MergeDetector(nn.Module):
+class ArboristMergeDetector(nn.Module):
     """
     Binary merge-detection model based on graph structure only.
 
@@ -165,7 +165,7 @@ class MergeDetector(nn.Module):
 
         Returns
         -------
-        MergeDetector
+        ArboristMergeDetector
         """
         checkpoint = torch.load(path, weights_only=False)
         model = cls(**checkpoint["config"])

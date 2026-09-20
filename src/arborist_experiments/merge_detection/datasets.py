@@ -9,6 +9,8 @@ Dataset utilities for training a merge-detection model on graph structure only.
 """
 
 import os
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import rustworkx as rx
@@ -20,6 +22,7 @@ from arborist.utils.graph_utils import topological_decomposition
 from arborist.utils.swc_loading import Reader
 from arborist.utils.util import write_json
 
+from neuron_proofreader.machine_learning.image_dataloader import DetectionPatchLoader
 from neuron_proofreader.utils.ml_util import TensorDict
 
 
@@ -258,6 +261,143 @@ class MergeGraphDataset(Dataset):
             f"n_merge={len(self.merge_nodes)}, "
             f"n_nonmerge={len(self.nonmerge_nodes)})"
         )
+
+
+class GraphVisionSearchDataset(GraphSearchDataset):
+    """
+    Unlabelled dataset over all branching nodes of a FragmentsGraph, with
+    image patches loaded alongside each graph subgraph.
+
+    Each item is a (node_id, TensorDict({"img": tensor, "tree_sample": TreeSample})) pair.
+
+    Parameters
+    ----------
+    graph : FragmentsGraph
+    depth : float
+        Subgraph extraction radius in microns.
+    img_config : ImageConfig
+        Passed to DetectionPatchLoader.
+    **kwargs
+        Forwarded to GraphSearchDataset.
+    """
+
+    def __init__(self, graph, depth, img_config, **kwargs):
+        super().__init__(graph, depth, **kwargs)
+        self.patch_loader = DetectionPatchLoader(graph, img_config)
+
+    def __getitem__(self, i):
+        node, sample = super().__getitem__(i)
+        _, patch = self.patch_loader(node)
+        return node, TensorDict({"img": torch.as_tensor(patch), "tree_sample": sample})
+
+
+def collate_vision_search_samples(batch):
+    nodes = torch.tensor([item[0] for item in batch])
+    imgs = torch.stack([item[1]["img"] for item in batch])
+    samples = [item[1]["tree_sample"] for item in batch]
+    return nodes, TensorDict({"img": imgs, "tree_sample": samples})
+
+
+class ThreadedPrefetchLoader:
+    """
+    Sequential batch loader that fetches items with a thread pool and keeps
+    ``prefetch`` batches in flight ahead of the consumer.
+
+    Threads share the dataset (and its graph) in-process, so unlike
+    ``DataLoader(num_workers>0)`` nothing is forked or pickled. Suited to
+    I/O-bound datasets such as GraphVisionSearchDataset.
+
+    Parameters
+    ----------
+    dataset : Dataset
+    batch_size : int
+    collate_fn : callable
+        Assembles a list of dataset items into a batch.
+    prefetch : int, optional
+        Number of batches to keep in flight. Default is 4.
+    max_workers : int, optional
+        Thread pool size. Default is 16.
+    """
+
+    def __init__(self, dataset, batch_size, collate_fn, prefetch=4, max_workers=16):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.collate_fn = collate_fn
+        self.prefetch = prefetch
+        self.max_workers = max_workers
+
+    def __len__(self):
+        return (len(self.dataset) + self.batch_size - 1) // self.batch_size
+
+    def __iter__(self):
+        n = len(self.dataset)
+        starts = iter(range(0, n, self.batch_size))
+
+        def submit(executor, start):
+            idxs = range(start, min(start + self.batch_size, n))
+            return [executor.submit(self.dataset.__getitem__, i) for i in idxs]
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            pending = deque()
+            for start in starts:
+                pending.append(submit(executor, start))
+                if len(pending) >= self.prefetch:
+                    break
+
+            while pending:
+                futures = pending.popleft()
+                try:
+                    pending.append(submit(executor, next(starts)))
+                except StopIteration:
+                    pass
+                yield self.collate_fn([f.result() for f in futures])
+
+
+class MergeVisionDataset(MergeGraphDataset):
+    """
+    Labelled dataset that yields both a rooted subgraph and an image patch
+    for each site, for training ArboristVisionMergeDetector.
+
+    Each item is a (TensorDict({"img": tensor, "tree_sample": TreeSample}), label) pair.
+
+    Parameters
+    ----------
+    graph : FragmentsGraph
+        Full skeleton graph.
+    merge_nodes : list[int]
+        Graph node IDs at merge sites (positive examples).
+    nonmerge_nodes : list[int]
+        Graph node IDs at nonmerge sites (negative examples).
+    img_config : ImageConfig
+        Image configuration (path, patch shape, etc.) passed to DetectionPatchLoader.
+    **kwargs
+        Forwarded to MergeGraphDataset.
+    """
+
+    def __init__(self, graph, merge_nodes, nonmerge_nodes, img_config, **kwargs):
+        super().__init__(graph, merge_nodes, nonmerge_nodes, **kwargs)
+        self.patch_loader = DetectionPatchLoader(graph, img_config)
+
+    def __getitem__(self, i):
+        node, _ = self._index[i]
+        sample, label = super().__getitem__(i)
+        _, patch = self.patch_loader(node)
+        return TensorDict({"img": torch.as_tensor(patch), "tree_sample": sample}), label
+
+
+def collate_merge_vision_samples(batch):
+    """
+    Collate function for MergeVisionDataset.
+
+    Returns
+    -------
+    x : TensorDict with keys "img" (B, 2, D, H, W) and "tree_sample" (list)
+    labels : torch.Tensor of shape (B, 1)
+    """
+    imgs = torch.stack([item[0]["img"] for item in batch])
+    samples = [item[0]["tree_sample"] for item in batch]
+    labels = torch.tensor([item[1] for item in batch], dtype=torch.float32).unsqueeze(1)
+    return TensorDict({"img": imgs, "tree_sample": samples}), labels
 
 
 # --- Site Loading ---
