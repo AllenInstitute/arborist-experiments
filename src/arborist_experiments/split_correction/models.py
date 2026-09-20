@@ -252,6 +252,10 @@ class ArboristVisionHGAT(NewVisionHGAT):
     ):
         super().__init__(patch_shape, **hgat_kwargs)
         tree_encoder_kwargs = dict(tree_encoder_kwargs or {})
+        self.config = {
+            "img_embed_dim": hgat_kwargs.get("img_embed_dim", 64),
+            "hidden_dim": hgat_kwargs.get("hidden_dim", 128),
+        }
         self.config.update(
             {
                 "model_type": "ArboristVisionHGAT",
@@ -291,10 +295,10 @@ class ArboristVisionHGAT(NewVisionHGAT):
 
         # Initial embeddings
         x_img = self.img_encoder(x_img)
-        x_tree = self.tree_encoder(tree_samples).to(x_img.dtype)
+        x_tree = self.tree_encoder(tree_samples).to(x_img)
         n_branches = x_dict["branch"].shape[0]
         x_dict["branch"] = (
-            self.branch_relay.to(x_img.dtype).unsqueeze(0).expand(n_branches, -1)
+            self.branch_relay.to(x_img).unsqueeze(0).expand(n_branches, -1)
         )
 
         # Fuse image and tree embeddings with the proposal length
