@@ -148,8 +148,9 @@ class MergeGraphDataset(Dataset):
         If True, randomly subsample negatives each epoch to match the target
         ratio. Default is True.
     transform : callable, optional
-        Applied to each curve's raw xyz array before differencing, e.g.
-        CurveTransforms for augmentation. Default is None.
+        Applied once to the subgraph's full (N, 3) node_xyz array before
+        decomposition, e.g. GraphTransforms, so every curve receives the same
+        rotation and mirror. Default is None.
     nonmerge_sampler : callable, optional
         Zero-argument callable returning a list of node IDs to use as extra
         negatives. Called on every index (re)build, so negatives are drawn
@@ -232,13 +233,13 @@ class MergeGraphDataset(Dataset):
         """
         node, label = self._index[i]
         subgraph = self.graph.rooted_subgraph(node, self.max_depth)
+        if self.transform:
+            subgraph.node_xyz = self.transform(subgraph.node_xyz)
         _, paths, topo_edge_index = topological_decomposition(subgraph)
 
         curves = []
         for path in paths:
             xyz = subgraph.node_xyz[path].copy()
-            if self.transform:
-                xyz = self.transform(xyz)
             xyz -= xyz[0]
             xyz[1:] -= xyz[:-1].copy()
             if len(xyz) < self.min_curve_len:
