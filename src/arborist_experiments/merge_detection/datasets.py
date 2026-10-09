@@ -17,7 +17,7 @@ import rustworkx as rx
 import torch
 from torch.utils.data import Dataset
 
-from arborist.data.datasets import TreeSample, _build_line_graph_edge_index
+from arborist.data.datasets import build_tree_sample
 from arborist.utils.graph_utils import topological_decomposition
 from arborist.utils.swc_loading import Reader
 from arborist.utils.util import write_json
@@ -107,9 +107,7 @@ class GraphSearchDataset(Dataset):
                 xyz = np.concatenate([xyz, pad], axis=0)
             curves.append(xyz)
 
-        edge_index = _build_line_graph_edge_index(topo_edge_index)
-        root_curve_indices = [j for j, (src, _) in enumerate(topo_edge_index) if src == 0]
-        return node, TreeSample(curves=curves, edge_index=edge_index, root_curve_indices=root_curve_indices)
+        return node, build_tree_sample(curves, topo_edge_index)
 
 
 def collate_fn(batch):
@@ -247,9 +245,7 @@ class MergeGraphDataset(Dataset):
                 xyz = np.concatenate([xyz, pad], axis=0)
             curves.append(xyz)
 
-        edge_index = _build_line_graph_edge_index(topo_edge_index)
-        root_curve_indices = [i for i, (src, _) in enumerate(topo_edge_index) if src == 0]
-        return TreeSample(curves=curves, edge_index=edge_index, root_curve_indices=root_curve_indices), label
+        return build_tree_sample(curves, topo_edge_index, target=label), label
 
     def __len__(self):
         return len(self._index)
