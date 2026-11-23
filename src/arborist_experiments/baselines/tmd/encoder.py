@@ -25,12 +25,9 @@ class TMDEncoder(nn.Module):
     Graph encoder that embeds a rooted subgraph through its TMD persistence
     image with a two-layer MLP.
 
-    Maps a batch of TreeSamples to one embedding per sample, the same
-    contract the task models in ``tasks`` expect from the Arborist encoder,
-    so it can be swapped in for any downstream task (merge detection, split
-    correction, ...) and combined with other modalities by the task head.
-    The persistence image is computed on the CPU with no gradient; only the
-    MLP is trained.
+    Maps a batch of arborist TreeSamples to one embedding per sample, the
+    same interface as the Arborist encoder, so any task head can use either.
+    The persistence image is computed without gradients; only the MLP trains.
 
     Parameters
     ----------
