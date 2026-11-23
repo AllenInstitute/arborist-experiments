@@ -5,7 +5,7 @@ module per method, so the task heads in ``tasks`` can wrap any of them.
 """
 
 from arborist_experiments.baselines.tmd import (
-    TMDEncoder,
+    TMDDescriptor,
     persistence_barcode,
     persistence_image,
     tree_distances,

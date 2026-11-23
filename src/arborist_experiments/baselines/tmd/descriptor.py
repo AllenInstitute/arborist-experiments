@@ -1,13 +1,14 @@
 """
-Created on Mon November 23 2026
+Created on Sun November 23 2026
 
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-TMDEncoder: embeds a rooted subgraph through its TMD persistence image with
-a small MLP. It has the same interface as the Arborist encoder as seen by
-the task models in ``tasks`` (a TreeSample batch in, one embedding per
-TreeSample out), so any task head can take it in place of Arborist.
+TMDDescriptor: represents a rooted subgraph by its flattened TMD
+persistence image. It has no parameters and the same interface as the
+learned graph encoders (a TreeSample batch in, one vector per TreeSample
+out), so a task head can take it in place of Arborist and the head is the
+only trained part, as in the paper.
 """
 
 import numpy as np
@@ -20,14 +21,10 @@ from arborist_experiments.baselines.tmd.persistence import (
 )
 
 
-class TMDEncoder(nn.Module):
+class TMDDescriptor(nn.Module):
     """
-    Graph encoder that embeds a rooted subgraph through its TMD persistence
-    image with a two-layer MLP.
-
-    Maps a batch of arborist TreeSamples to one embedding each, the
-    same interface as the Arborist encoder, so any task head can use either.
-    The persistence image is computed without gradients; only the MLP trains.
+    Parameter-free graph descriptor: the flattened TMD persistence image of
+    a rooted subgraph.
 
     Parameters
     ----------
@@ -35,48 +32,24 @@ class TMDEncoder(nn.Module):
         Upper bound of the persistence image axes; use the subgraph
         extraction radius so every barcode fits on the grid.
     resolution : int, optional
-        Persistence image resolution per axis. Default is 20.
+        Persistence image resolution per axis; the output has
+        ``resolution ** 2`` entries. Default is 20.
     bandwidth : float, optional
         Gaussian bandwidth in microns. Defaults to one grid cell.
     distance : str, optional
         "radial" or "path", see ``tree_distances``. Default is "radial".
-    hidden_dim : int, optional
-        MLP hidden dimension. Default is 128.
-    embed_dim : int, optional
-        Output embedding dimension. Default is 128, the size of the Arborist
-        readout used by the task models (CLS plus pooled root curves at
-        latent_dim 64), so the two encoders are interchangeable.
-    dropout : float, optional
-        Dropout probability inside the MLP. Default is 0.1.
     """
 
-    def __init__(
-        self,
-        max_dist,
-        resolution=20,
-        bandwidth=None,
-        distance="radial",
-        hidden_dim=128,
-        embed_dim=128,
-        dropout=0.1,
-    ):
+    def __init__(self, max_dist, resolution=20, bandwidth=None, distance="radial"):
         super().__init__()
         self.config = {
             "max_dist": max_dist,
             "resolution": resolution,
             "bandwidth": bandwidth,
             "distance": distance,
-            "hidden_dim": hidden_dim,
-            "embed_dim": embed_dim,
-            "dropout": dropout,
         }
-        self.embed_dim = embed_dim
-        self.mlp = nn.Sequential(
-            nn.Linear(resolution * resolution, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, embed_dim),
-        )
+        self.embed_dim = resolution * resolution
+        self.register_buffer("_device_anchor", torch.zeros(1))
 
     def featurize(self, tree_sample):
         """
@@ -114,8 +87,7 @@ class TMDEncoder(nn.Module):
         Returns
         -------
         torch.Tensor
-            Shape (B, embed_dim).
+            Shape (B, resolution ** 2).
         """
         feats = np.stack([self.featurize(s) for s in tree_samples])
-        device = next(self.parameters()).device
-        return self.mlp(torch.as_tensor(feats, device=device))
+        return torch.as_tensor(feats, device=self._device_anchor.device)
