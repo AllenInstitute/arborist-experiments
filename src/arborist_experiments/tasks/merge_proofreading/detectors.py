@@ -51,10 +51,12 @@ def build_encoder(encoder_type, encoder_kwargs):
 
 
 def _tree_samples(x):
+    """Extracts the List[TreeSample] from a batch dict or passes a list through."""
     return x["tree_sample"] if isinstance(x, dict) else x
 
 
 def _load_state_dict(model, checkpoint):
+    """Loads a checkpoint's state_dict into model, dropping any torch.compile prefix."""
     state_dict = {
         (k[len("_orig_mod."):] if k.startswith("_orig_mod.") else k): v
         for k, v in checkpoint["state_dict"].items()
@@ -104,13 +106,43 @@ class GraphMergeDetector(nn.Module):
         return self.head(self.encoder(_tree_samples(x)))
 
     def save(self, path):
+        """
+        Saves the model config and weights to a .pth checkpoint.
+
+        Parameters
+        ----------
+        path : str
+            Destination path.
+        """
         torch.save({"config": self.config, "state_dict": self.state_dict()}, path)
 
     def save_config(self, path):
+        """
+        Saves the model config to a JSON file.
+
+        Parameters
+        ----------
+        path : str
+            Destination path (e.g. .../model_config.json).
+        """
         write_json(path, self.config)
 
     @classmethod
     def load(cls, path, map_location=None):
+        """
+        Loads a GraphMergeDetector from a checkpoint saved by ``save`` or a trainer.
+
+        Parameters
+        ----------
+        path : str
+            Path to .pth checkpoint file.
+        map_location : str or torch.device, optional
+            Device to map the weights to. Default is None.
+
+        Returns
+        -------
+        GraphMergeDetector
+        """
         checkpoint = torch.load(path, map_location=map_location, weights_only=False)
         config = checkpoint["config"]
         model = cls(build_encoder(config["encoder_type"], config["encoder_kwargs"]))
@@ -184,6 +216,19 @@ class MultimodalMergeDetector(nn.Module):
         self.merge_head = FeedForwardNet(img_embed_dim + encoder.embed_dim, 1, 3)
 
     def _encode_image(self, x_img):
+        """
+        Encodes an image batch into the merge image embedding.
+
+        Parameters
+        ----------
+        x_img : torch.Tensor
+            Shape (B, C, D, H, W).
+
+        Returns
+        -------
+        torch.Tensor
+            Shape (B, img_embed_dim), float32.
+        """
         # Run the shared backbone once
         x_img = x_img.to(next(self.vision.parameters()).dtype)
         stages = self.vision.encode(x_img)
@@ -229,13 +274,43 @@ class MultimodalMergeDetector(nn.Module):
         return self
 
     def save(self, path):
+        """
+        Saves the model config and weights to a .pth checkpoint.
+
+        Parameters
+        ----------
+        path : str
+            Destination path.
+        """
         torch.save({"config": self.config, "state_dict": self.state_dict()}, path)
 
     def save_config(self, path):
+        """
+        Saves the model config to a JSON file.
+
+        Parameters
+        ----------
+        path : str
+            Destination path (e.g. .../model_config.json).
+        """
         write_json(path, self.config)
 
     @classmethod
     def load(cls, path, map_location=None):
+        """
+        Loads a MultimodalMergeDetector from a checkpoint saved by ``save`` or a trainer.
+
+        Parameters
+        ----------
+        path : str
+            Path to .pth checkpoint file.
+        map_location : str or torch.device, optional
+            Device to map the weights to. Default is None.
+
+        Returns
+        -------
+        MultimodalMergeDetector
+        """
         checkpoint = torch.load(path, map_location=map_location, weights_only=False)
         config = dict(checkpoint["config"])
         config.pop("model_type")
