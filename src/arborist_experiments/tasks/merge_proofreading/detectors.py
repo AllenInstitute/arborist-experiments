@@ -11,7 +11,8 @@ Register each new encoder in ``ENCODERS`` so checkpoints can be reloaded.
 GraphMergeDetector puts a linear head on the graph embedding.
 MultimodalMergeDetector reuses JointProofreader's merge path (vision
 backbone, pooling, projection and head) with the Arborist readout replaced
-by the given encoder. Both follow the ``forward(x, task)`` and
+by the given encoder. NEURDMergeDetector is parameter-free and scores sites
+with the NEURD heuristics. All follow the ``forward(x, task)`` and
 ``config`` / ``load`` conventions of the capsule trainers and benchmark.
 """
 
@@ -23,16 +24,11 @@ from arborist.utils.util import write_json
 from neuron_proofreader.models.vision_models import CNN3D, CenterWeightedPool3D
 from neuron_proofreader.utils.ml_util import FeedForwardNet
 
-from arborist_experiments.baselines.neurd import NEURDMergeDetector
+from arborist_experiments.baselines.neurd import rule_margins
 from arborist_experiments.baselines.tmd import TMDEncoder
 
 ENCODERS = {
     "TMDEncoder": TMDEncoder,
-}
-
-# Baselines that are complete detectors rather than encoders
-DETECTORS = {
-    "NEURDMergeDetector": NEURDMergeDetector,
 }
 
 
@@ -323,6 +319,128 @@ class MultimodalMergeDetector(nn.Module):
         encoder = build_encoder(config.pop("encoder_type"), config.pop("encoder_kwargs"))
         model = cls(encoder, **config)
         return _load_state_dict(model, checkpoint)
+
+
+class NEURDMergeDetector(nn.Module):
+    """
+    Scores each site by how far the most-violated NEURD rule is past its
+    threshold. The logit is positive iff some rule fires, so a sigmoid
+    threshold of 0.5 reproduces NEURD's binary decision while the magnitude
+    ranks sites for precision-recall curves. Nothing is trained.
+
+    Parameters
+    ----------
+    angle_scale : float, optional
+        Degrees of angle margin that count as one unit of logit, putting the
+        angle rules on the same footing as the degree rule. Default is 10.
+    **rule_kwargs
+        Thresholds forwarded to ``rule_margins`` (high_degree_min,
+        pass_through_angle, fork_angle, bend_angle, comparison_distance,
+        offset).
+    """
+
+    modality = "graph"
+
+    def __init__(self, angle_scale=10.0, **rule_kwargs):
+        super().__init__()
+        self.angle_scale = angle_scale
+        self.rule_kwargs = rule_kwargs
+        self.config = {
+            "model_type": f"{type(self).__name__}_{self.modality}",
+            "detector_type": type(self).__name__,
+            "angle_scale": angle_scale,
+            **rule_kwargs,
+        }
+        self.register_buffer("_device_anchor", torch.zeros(1))
+
+    def score(self, sample):
+        """
+        Merge score of one site: the largest rule margin, angles scaled.
+
+        Parameters
+        ----------
+        sample : TreeSample
+            Rooted subgraph from ``arborist.data.datasets``, built by
+            ``build_tree_sample``.
+
+        Returns
+        -------
+        float
+        """
+        margins = rule_margins(sample, **self.rule_kwargs)
+        return max(
+            margins["high_degree"],
+            margins["pass_through"] / self.angle_scale,
+            margins["fork"] / self.angle_scale,
+            margins["bend"] / self.angle_scale,
+        )
+
+    def forward(self, x, task=None):
+        """
+        Parameters
+        ----------
+        x : List[TreeSample] or dict
+            Batch of rooted subgraphs; a dict holds them under "tree_sample".
+        task : str, optional
+            Ignored; present for the trainers' ``forward(x, task)`` convention.
+
+        Returns
+        -------
+        torch.Tensor
+            Logits of shape (B, 1).
+        """
+        samples = x["tree_sample"] if isinstance(x, dict) else x
+        scores = [self.score(s) for s in samples]
+        return torch.tensor(scores, dtype=torch.float32, device=self._device_anchor.device).unsqueeze(1)
+
+    def save(self, path):
+        """
+        Saves the config (the rule thresholds) to a .pth checkpoint.
+
+        Parameters
+        ----------
+        path : str
+            Destination path.
+        """
+        torch.save({"config": self.config, "state_dict": self.state_dict()}, path)
+
+    def save_config(self, path):
+        """
+        Saves the config to a JSON file.
+
+        Parameters
+        ----------
+        path : str
+            Destination path (e.g. .../model_config.json).
+        """
+        write_json(path, self.config)
+
+    @classmethod
+    def load(cls, path, map_location=None):
+        """
+        Rebuilds the detector from a checkpoint's config.
+
+        Parameters
+        ----------
+        path : str
+            Path to .pth checkpoint file.
+        map_location : str or torch.device, optional
+            Unused; accepted for interface parity. Default is None.
+
+        Returns
+        -------
+        NEURDMergeDetector
+        """
+        config = dict(torch.load(path, map_location="cpu", weights_only=False)["config"])
+        config.pop("model_type")
+        config.pop("detector_type")
+        return cls(**config)
+
+
+# Baselines that are complete detectors rather than encoders
+DETECTORS = {
+    "NEURDMergeDetector": NEURDMergeDetector,
+}
 
 
 def load_detector(path, map_location=None):
