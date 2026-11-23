@@ -8,13 +8,11 @@ Merge detectors that wrap a graph encoder from ``baselines`` so it can be
 compared against Arborist under the same training and evaluation harness.
 Register each new encoder in ``ENCODERS`` so checkpoints can be reloaded.
 
-GraphMergeDetector mirrors the capsule's GraphOnly model (linear head on the
-graph embedding). MultimodalMergeDetector mirrors the merge path of
-neuron_proofreader's JointProofreader: the same CNN3D backbone, task conv,
-center-weighted pooling, vision projection and FeedForwardNet head, with the
-Arborist readout replaced by the given encoder. Both follow the trainers'
-``forward(x, task)`` convention and the ``config`` / ``load`` checkpoint
-protocol used by the capsule and the benchmark.
+GraphMergeDetector puts a linear head on the graph embedding.
+MultimodalMergeDetector reuses JointProofreader's merge path (vision
+backbone, pooling, projection and head) with the Arborist readout replaced
+by the given encoder. Both follow the ``forward(x, task)`` and
+``config`` / ``load`` conventions of the capsule trainers and benchmark.
 """
 
 import torch
