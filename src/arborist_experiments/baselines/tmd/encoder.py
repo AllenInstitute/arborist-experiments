@@ -1,13 +1,13 @@
 """
-Created on Sun November 23 2026
+Created on Mon November 23 2026
 
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
 TMDEncoder: embeds a rooted subgraph through its TMD persistence image with
-a small MLP. Stands in for the Arborist encoder inside the detectors in
-``tasks.merge_proofreading``, so the graph-only and multimodal comparisons
-share everything but the graph branch.
+a small MLP. It has the same interface as the Arborist encoder as seen by
+the task models in ``tasks`` (a TreeSample batch in, one embedding per
+sample out), so any task head can take it in place of Arborist.
 """
 
 import numpy as np
@@ -23,8 +23,14 @@ from arborist_experiments.baselines.tmd.persistence import (
 class TMDEncoder(nn.Module):
     """
     Graph encoder that embeds a rooted subgraph through its TMD persistence
-    image with a two-layer MLP. Plug into GraphMergeDetector or
-    MultimodalMergeDetector in place of the Arborist encoder.
+    image with a two-layer MLP.
+
+    Maps a batch of TreeSamples to one embedding per sample, the same
+    contract the task models in ``tasks`` expect from the Arborist encoder,
+    so it can be swapped in for any downstream task (merge detection, split
+    correction, ...) and combined with other modalities by the task head.
+    The persistence image is computed on the CPU with no gradient; only the
+    MLP is trained.
 
     Parameters
     ----------
@@ -40,8 +46,9 @@ class TMDEncoder(nn.Module):
     hidden_dim : int, optional
         MLP hidden dimension. Default is 128.
     embed_dim : int, optional
-        Output embedding dimension. Default is 128, matching the Arborist
-        merge readout (CLS plus pooled root curves at latent_dim 64).
+        Output embedding dimension. Default is 128, the size of the Arborist
+        readout used by the task models (CLS plus pooled root curves at
+        latent_dim 64), so the two encoders are interchangeable.
     dropout : float, optional
         Dropout probability inside the MLP. Default is 0.1.
     """
