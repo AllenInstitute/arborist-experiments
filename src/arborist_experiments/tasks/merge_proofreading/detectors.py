@@ -23,10 +23,10 @@ from arborist.utils.util import write_json
 from neuron_proofreader.models.vision_models import CNN3D, CenterWeightedPool3D
 from neuron_proofreader.utils.ml_util import FeedForwardNet
 
-from arborist_experiments.baselines.tmd import TMDEncoder
+from arborist_experiments.baselines.tmd import TMDDescriptor
 
 ENCODERS = {
-    "TMDEncoder": TMDEncoder,
+    "TMDDescriptor": TMDDescriptor,
 }
 
 
