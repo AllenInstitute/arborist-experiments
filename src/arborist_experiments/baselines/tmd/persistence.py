@@ -60,20 +60,24 @@ def persistence_barcode(sample, distance="radial"):
         Shape (n_leaves, 2) float32 array of (birth, death) pairs. Empty for a
         sample with no curves.
     """
+    # Empty tree: root only
     n_tokens = len(sample.parents)
     if n_tokens <= 1:
         return np.zeros((0, 2), dtype=np.float32)
 
+    # Filtration value of each token and the children of each token
     f = tree_distances(sample, distance)
     children = [[] for _ in range(n_tokens)]
     for k in range(1, n_tokens):
         children[sample.parents[k]].append(k)
 
-    # hops counts curves to each token's proximal node, so a curve's distal
-    # node sits one level deeper; the root stays at depth 0
+    # Depth of each token's distal node (hops counts curves to the proximal
+    # node, so a curve's distal node sits one level deeper; root at depth 0)
     depth = sample.hops.copy()
     depth[1:] += 1
 
+    # Elder rule, deepest first: the farthest-reaching child survives each
+    # branch point and the others die there
     bars = []
     alive = f.copy()
     for k in np.argsort(-depth, kind="stable"):
@@ -85,6 +89,8 @@ def persistence_barcode(sample, distance="radial"):
             if i != survivor:
                 bars.append((birth, f[k]))
         alive[k] = births[survivor]
+
+    # The last survivor dies at the root
     bars.append((alive[0], f[0]))
     return np.asarray(bars, dtype=np.float32)
 
