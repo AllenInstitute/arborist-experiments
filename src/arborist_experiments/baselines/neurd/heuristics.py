@@ -29,7 +29,7 @@ of the parent) does not fire; they should be tuned on validation sites.
 import numpy as np
 
 
-def root_directions(sample, comparison_distance=10.0, offset=0.0):
+def root_directions(sample, comparison_distance=20.0, offset=0.0):
     """
     Unit direction of each branch leaving the root.
 
@@ -45,7 +45,7 @@ def root_directions(sample, comparison_distance=10.0, offset=0.0):
         ``build_tree_sample``.
     comparison_distance : float, optional
         Arc length (microns) over which each direction is measured.
-        Default is 10.
+        Default is 20.
     offset : float, optional
         Arc length (microns) skipped before measuring, to step past local
         wobble at the node. Default is 0.
@@ -96,7 +96,7 @@ def rule_margins(
     pass_through_angle=165.0,
     fork_angle=30.0,
     bend_angle=80.0,
-    comparison_distance=10.0,
+    comparison_distance=20.0,
     offset=0.0,
 ):
     """
