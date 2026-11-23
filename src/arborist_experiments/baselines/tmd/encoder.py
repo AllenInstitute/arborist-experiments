@@ -7,7 +7,7 @@ Created on Mon November 23 2026
 TMDEncoder: embeds a rooted subgraph through its TMD persistence image with
 a small MLP. It has the same interface as the Arborist encoder as seen by
 the task models in ``tasks`` (a TreeSample batch in, one embedding per
-sample out), so any task head can take it in place of Arborist.
+TreeSample out), so any task head can take it in place of Arborist.
 """
 
 import numpy as np
@@ -25,7 +25,7 @@ class TMDEncoder(nn.Module):
     Graph encoder that embeds a rooted subgraph through its TMD persistence
     image with a two-layer MLP.
 
-    Maps a batch of arborist TreeSamples to one embedding per sample, the
+    Maps a batch of arborist TreeSamples to one embedding each, the
     same interface as the Arborist encoder, so any task head can use either.
     The persistence image is computed without gradients; only the MLP trains.
 
@@ -78,13 +78,13 @@ class TMDEncoder(nn.Module):
             nn.Linear(hidden_dim, embed_dim),
         )
 
-    def featurize(self, sample):
+    def featurize(self, tree_sample):
         """
         Flattened persistence image of one TreeSample.
 
         Parameters
         ----------
-        sample : TreeSample
+        tree_sample : TreeSample
             Rooted subgraph from ``arborist.data.datasets``, built by
             ``build_tree_sample``.
 
@@ -93,7 +93,7 @@ class TMDEncoder(nn.Module):
         numpy.ndarray
             Shape (resolution ** 2,) float32.
         """
-        barcode = persistence_barcode(sample, self.config["distance"])
+        barcode = persistence_barcode(tree_sample, self.config["distance"])
         img = persistence_image(
             barcode,
             self.config["max_dist"],
@@ -103,11 +103,11 @@ class TMDEncoder(nn.Module):
         return img.ravel()
 
     @torch._dynamo.disable
-    def forward(self, samples):
+    def forward(self, tree_samples):
         """
         Parameters
         ----------
-        samples : List[TreeSample]
+        tree_samples : List[TreeSample]
             Rooted subgraphs from ``arborist.data.datasets``, built by
             ``build_tree_sample``.
 
@@ -116,6 +116,6 @@ class TMDEncoder(nn.Module):
         torch.Tensor
             Shape (B, embed_dim).
         """
-        feats = np.stack([self.featurize(s) for s in samples])
+        feats = np.stack([self.featurize(s) for s in tree_samples])
         device = next(self.parameters()).device
         return self.mlp(torch.as_tensor(feats, device=device))
