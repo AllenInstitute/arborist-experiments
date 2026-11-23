@@ -10,3 +10,4 @@ from arborist_experiments.baselines.tmd import (
     persistence_image,
     tree_distances,
 )
+from arborist_experiments.baselines.neurd import NEURDMergeDetector

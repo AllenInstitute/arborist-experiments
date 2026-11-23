@@ -23,10 +23,16 @@ from arborist.utils.util import write_json
 from neuron_proofreader.models.vision_models import CNN3D, CenterWeightedPool3D
 from neuron_proofreader.utils.ml_util import FeedForwardNet
 
+from arborist_experiments.baselines.neurd import NEURDMergeDetector
 from arborist_experiments.baselines.tmd import TMDEncoder
 
 ENCODERS = {
     "TMDEncoder": TMDEncoder,
+}
+
+# Baselines that are complete detectors rather than encoders
+DETECTORS = {
+    "NEURDMergeDetector": NEURDMergeDetector,
 }
 
 
@@ -195,7 +201,7 @@ class MultimodalMergeDetector(nn.Module):
             **vision_backbone_kwargs,
         }
 
-        # Parameters
+        # Set parameters
         final_idx = self.vision.pool_stage_idxs[-1]
         final_channels = self.vision.encode.blocks[final_idx].out_channels
         sigma = self.vision.config.get("center_pool_sigma", 0.4)
@@ -321,8 +327,9 @@ class MultimodalMergeDetector(nn.Module):
 
 def load_detector(path, map_location=None):
     """
-    Loads a GraphMergeDetector or MultimodalMergeDetector checkpoint,
-    dispatching on the modality recorded in its config.
+    Loads a detector checkpoint: a baseline detector listed in ``DETECTORS``
+    by its ``detector_type``, otherwise a GraphMergeDetector or
+    MultimodalMergeDetector by the modality recorded in ``model_type``.
 
     Parameters
     ----------
@@ -335,6 +342,8 @@ def load_detector(path, map_location=None):
     torch.nn.Module
     """
     config = torch.load(path, map_location="cpu", weights_only=False)["config"]
+    if config.get("detector_type") in DETECTORS:
+        return DETECTORS[config["detector_type"]].load(path, map_location)
     if config["model_type"].endswith(MultimodalMergeDetector.modality):
         return MultimodalMergeDetector.load(path, map_location)
     return GraphMergeDetector.load(path, map_location)
