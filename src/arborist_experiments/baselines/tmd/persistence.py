@@ -12,13 +12,13 @@ radial or path distance filtration, and its persistence image.
 import numpy as np
 
 
-def tree_distances(sample, distance="radial"):
+def tree_distances(tree_sample, distance="radial"):
     """
     Distance from the root to the distal endpoint of each token.
 
     Parameters
     ----------
-    sample : TreeSample
+    tree_sample : TreeSample
         Rooted subgraph from ``arborist.data.datasets``; a tree of curves with
         the root at the origin, built by ``build_tree_sample``.
     distance : str, optional
@@ -31,14 +31,14 @@ def tree_distances(sample, distance="radial"):
         Shape (T,) float32; token 0 is the root with distance 0.
     """
     if distance == "radial":
-        return np.linalg.norm(sample.endpoints[:, 1], axis=1).astype(np.float32)
+        return np.linalg.norm(tree_sample.endpoints[:, 1], axis=1).astype(np.float32)
     if distance == "path":
-        lengths = [0.0] + [np.linalg.norm(c, axis=1).sum() for c in sample.curves]
-        return (sample.cable + np.asarray(lengths)).astype(np.float32)
+        lengths = [0.0] + [np.linalg.norm(c, axis=1).sum() for c in tree_sample.curves]
+        return (tree_sample.cable + np.asarray(lengths)).astype(np.float32)
     raise ValueError(f"Unknown distance: {distance!r}. Expected 'radial' or 'path'.")
 
 
-def persistence_barcode(sample, distance="radial"):
+def persistence_barcode(tree_sample, distance="radial"):
     """
     TMD persistence barcode of a rooted tree.
 
@@ -48,7 +48,7 @@ def persistence_barcode(sample, distance="radial"):
 
     Parameters
     ----------
-    sample : TreeSample
+    tree_sample : TreeSample
         Rooted subgraph from ``arborist.data.datasets``; a tree of curves with
         the root at the origin, built by ``build_tree_sample``.
     distance : str, optional
@@ -58,21 +58,21 @@ def persistence_barcode(sample, distance="radial"):
     -------
     numpy.ndarray
         Shape (n_leaves, 2) float32 array of (birth, death) pairs. Empty for a
-        sample with no curves.
+        TreeSample with no curves.
     """
     # Check for empty tree
-    n_tokens = len(sample.parents)
+    n_tokens = len(tree_sample.parents)
     if n_tokens <= 1:
         return np.zeros((0, 2), dtype=np.float32)
 
     # Filtration value of each token and the children of each token
-    f = tree_distances(sample, distance)
+    f = tree_distances(tree_sample, distance)
     children = [[] for _ in range(n_tokens)]
     for k in range(1, n_tokens):
-        children[sample.parents[k]].append(k)
+        children[tree_sample.parents[k]].append(k)
 
     # Depth of each token's distal node
-    depth = sample.hops.copy()
+    depth = tree_sample.hops.copy()
     depth[1:] += 1
 
     # Compute persistence from distal to proximal
