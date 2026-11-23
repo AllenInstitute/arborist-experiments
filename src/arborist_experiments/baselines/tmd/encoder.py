@@ -7,8 +7,7 @@ Created on Mon November 23 2026
 TMDEncoder: embeds a rooted subgraph through its TMD persistence image with
 a small MLP. It has the same interface as the Arborist encoder as seen by
 the task models in ``tasks`` (a TreeSample batch in, one embedding per
-embedding per TreeSample out), so any task head can take it in place of
-Arborist.
+TreeSample out), so any task head can take it in place of Arborist.
 """
 
 import numpy as np
