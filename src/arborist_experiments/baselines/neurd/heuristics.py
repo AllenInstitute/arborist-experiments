@@ -34,9 +34,9 @@ def root_directions(tree_sample, comparison_distance=20.0, offset=0.0):
     Unit direction of each branch leaving the root.
 
     Positions along each root curve are recovered by cumulative sum of its
-    finite differences (the root is the origin). The direction runs from the
-    point at arc length ``offset`` to the point at arc length
-    ``offset + comparison_distance``, or to the curve's end if shorter.
+    finite differences. The direction runs from the point at arc length
+    ``offset`` to the point at arc length ``offset + comparison_distance``, or
+    to the curve's end if shorter.
 
     Parameters
     ----------
@@ -145,3 +145,8 @@ def rule_margins(
     elif degree == 2:
         margins["bend"] = float((180.0 - bend_angle) - angles[0])
     return margins
+
+
+# Weights that put the degree margin (branches) and the angle margins
+# (degrees) on a common scale for HeuristicMergeDetector
+WEIGHTS = {"high_degree": 1.0, "pass_through": 0.1, "fork": 0.1, "bend": 0.1}
