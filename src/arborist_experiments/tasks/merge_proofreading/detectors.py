@@ -148,7 +148,10 @@ class MultimodalMergeDetector(nn.Module):
         dropout=0.1,
         **vision_backbone_kwargs,
     ):
+        # Call parent class constructor
         super().__init__()
+
+        # Create config
         encoder_type = type(encoder).__name__
         self.config = {
             "model_type": f"{encoder_type}_{self.modality}",
@@ -160,11 +163,14 @@ class MultimodalMergeDetector(nn.Module):
             **vision_backbone_kwargs,
         }
 
-        self.vision = CNN3D(vision_input_shape, use_output_head=False, **vision_backbone_kwargs)
+        # Parameters
         final_idx = self.vision.pool_stage_idxs[-1]
         final_channels = self.vision.encode.blocks[final_idx].out_channels
         sigma = self.vision.config.get("center_pool_sigma", 0.4)
         learnable_sigma = self.vision.config.get("learnable_center_sigma", True)
+
+        # Instance attributes
+        self.vision = CNN3D(vision_input_shape, use_output_head=False, **vision_backbone_kwargs)
         self.merge_task_conv = nn.Conv3d(final_channels, final_channels, kernel_size=1)
         self.merge_task_pool = CenterWeightedPool3D(sigma=sigma, learnable=learnable_sigma)
         self.merge_vision_proj = nn.Sequential(
@@ -178,19 +184,24 @@ class MultimodalMergeDetector(nn.Module):
         self.merge_head = FeedForwardNet(img_embed_dim + encoder.embed_dim, 1, 3)
 
     def _encode_image(self, x_img):
+        # Run the shared backbone once
         x_img = x_img.to(next(self.vision.parameters()).dtype)
         stages = self.vision.encode(x_img)
 
+        # Multi-scale pooling of the shared stages (center-weighted + max)
         shared_feats = []
         for idx, pool in zip(self.vision.pool_stage_idxs, self.vision.center_pools):
             s = stages[idx]
             shared_feats.append(torch.cat([pool(s), F.adaptive_max_pool3d(s, 1).flatten(1)], dim=1))
         shared = self.vision.drop(torch.cat(shared_feats, dim=1))
 
+        # Merge-specific conv and pooling on the final stage
         task_out = self.merge_task_conv(stages[self.vision.pool_stage_idxs[-1]])
         task = torch.cat(
             [self.merge_task_pool(task_out), F.adaptive_max_pool3d(task_out, 1).flatten(1)], dim=1
         )
+
+        # Project to the image embedding, in fp32 for the head
         return self.merge_vision_proj(torch.cat([shared, task], dim=1)).float()
 
     def forward(self, x, task=None):
