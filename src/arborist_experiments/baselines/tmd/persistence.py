@@ -19,6 +19,8 @@ def tree_distances(sample, distance="radial"):
     Parameters
     ----------
     sample : TreeSample
+        Rooted subgraph from ``arborist.data.datasets``; a tree of curves with
+        the root at the origin, built by ``build_tree_sample``.
     distance : str, optional
         "radial" for Euclidean distance in the root frame, "path" for cable
         length along the tree. Default is "radial".
@@ -42,12 +44,13 @@ def persistence_barcode(sample, distance="radial"):
 
     Tokens are visited deepest-first. At each branch point the child branch
     with the larger birth value survives; every other child produces a bar
-    (birth, death) with death at the branch point's distance. The survivor
-    reaching the root produces the final bar dying at the root (distance 0).
+    (birth, death) with death at the branch point's distance.
 
     Parameters
     ----------
     sample : TreeSample
+        Rooted subgraph from ``arborist.data.datasets``; a tree of curves with
+        the root at the origin, built by ``build_tree_sample``.
     distance : str, optional
         Distance function, see ``tree_distances``. Default is "radial".
 

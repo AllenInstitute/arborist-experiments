@@ -85,6 +85,8 @@ class TMDEncoder(nn.Module):
         Parameters
         ----------
         sample : TreeSample
+            Rooted subgraph from ``arborist.data.datasets``, built by
+            ``build_tree_sample``.
 
         Returns
         -------
@@ -106,6 +108,8 @@ class TMDEncoder(nn.Module):
         Parameters
         ----------
         samples : List[TreeSample]
+            Rooted subgraphs from ``arborist.data.datasets``, built by
+            ``build_tree_sample``.
 
         Returns
         -------
