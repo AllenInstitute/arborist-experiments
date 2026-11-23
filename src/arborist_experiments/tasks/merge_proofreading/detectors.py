@@ -83,33 +83,34 @@ class MergeDetector(nn.Module):
 class LearnedMergeDetector(MergeDetector):
     """
     Trained detector: concatenates the embeddings of a graph encoder and/or
-    an image encoder and classifies them with a three-layer FeedForwardNet,
-    the merge head of JointProofreader. Swapping the graph encoder is the
-    only difference between Arborist and the baselines.
+    an image encoder and classifies them with a FeedForwardNet. Swapping the
+    graph encoder is the only difference between Arborist and the baselines.
 
     Parameters
     ----------
     graph_encoder : torch.nn.Module, optional
-        Maps List[TreeSample] to (B, embed_dim); e.g. ArboristEncoder or
-        TMDEncoder. Default is None.
+        Maps List[TreeSample] to (B, embed_dim). Default is None.
     vision_encoder : torch.nn.Module, optional
-        Maps images (B, C, D, H, W) to (B, embed_dim); e.g.
-        MergeVisionEncoder. Default is None.
+        Maps images (B, C, D, H, W) to (B, embed_dim). Default is None.
     dropout : float, optional
         Dropout on the concatenated embedding. Default is 0.1.
     """
 
     def __init__(self, graph_encoder=None, vision_encoder=None, dropout=0.1):
+        # Call parent class constructor
         super().__init__()
+
+        # Check that encoders are provided
         if graph_encoder is None and vision_encoder is None:
-            raise ValueError("At least one of graph_encoder and vision_encoder is required")
+            raise ValueError("graph_encoder and vision_encoder is required")
+        encoders = [enc for enc in (vision_encoder, graph_encoder) if enc is not None]
+
+        # Instance attributes
         self.graph_encoder = graph_encoder
         self.vision_encoder = vision_encoder
         self.modality = "_".join(
             name for name, enc in (("image", vision_encoder), ("graph", graph_encoder)) if enc is not None
         )
-
-        encoders = [enc for enc in (vision_encoder, graph_encoder) if enc is not None]
         self.drop = nn.Dropout(dropout)
         self.head = FeedForwardNet(sum(enc.embed_dim for enc in encoders), 1, 3)
 

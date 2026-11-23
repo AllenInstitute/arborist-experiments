@@ -62,7 +62,7 @@ class ArboristEncoder(nn.Module):
         return torch.stack(z)
 
 
-class MergeVisionEncoder(nn.Module):
+class VisionEncoder(nn.Module):
     """
     Image encoder from JointProofreader's merge path: a CNN3D backbone with
     multi-scale center-weighted pooling, a merge-specific 1x1 conv and pool

@@ -7,7 +7,7 @@ from arborist_experiments.tasks.merge_proofreading.detectors import (
 )
 from arborist_experiments.tasks.merge_proofreading.encoders import (
     ArboristEncoder,
-    MergeVisionEncoder,
+    VisionEncoder,
 )
 from arborist_experiments.tasks.merge_proofreading.registry import (
     build_detector,
