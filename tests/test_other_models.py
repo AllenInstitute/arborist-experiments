@@ -5,7 +5,7 @@ from arborist.data.datasets import build_tree_sample
 
 from neuron_proofreader.utils.ml_util import TensorDict
 
-from arborist_experiments.detectors import (
+from arborist_experiments.merge_proofreading import (
     GraphMergeDetector,
     MultimodalMergeDetector,
     load_detector,
