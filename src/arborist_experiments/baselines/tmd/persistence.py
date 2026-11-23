@@ -4,24 +4,12 @@ Created on Sun November 23 2026
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-TMD baseline for merge detection.
-
-Topological Morphology Descriptor (Kanari et al., 2018, Neuroinformatics).
-A rooted tree is summarised as a persistence barcode: every branch is born
-at the distance of its farthest leaf and dies at the branch point where it
-meets a sibling that reaches farther, with the last survivor dying at the
-root. The barcode is rendered as a persistence image on a fixed grid, which
-a small MLP embeds. TMDEncoder stands in for the Arborist encoder inside
-the detectors in ``detectors.py``, so the graph-only and multimodal
-comparisons share everything but the graph branch.
-
-Operates directly on arborist TreeSamples (see ``build_tree_sample``).
+Topological Morphology Descriptor (Kanari et al., 2018, Neuroinformatics)
+of an arborist TreeSample: the persistence barcode of a rooted tree under a
+radial or path distance filtration, and its persistence image.
 """
 
 import numpy as np
-import torch
-import torch.nn as nn
-
 
 
 def tree_distances(sample, distance="radial"):
@@ -135,96 +123,3 @@ def persistence_image(barcode, max_dist, resolution=20, bandwidth=None):
     if peak > 0:
         img /= peak
     return img.astype(np.float32)
-
-
-class TMDEncoder(nn.Module):
-    """
-    Graph encoder that embeds a rooted subgraph through its TMD persistence
-    image with a two-layer MLP. Plug into GraphMergeDetector or
-    MultimodalMergeDetector in place of the Arborist encoder.
-
-    Parameters
-    ----------
-    max_dist : float
-        Upper bound of the persistence image axes; use the subgraph
-        extraction radius so every barcode fits on the grid.
-    resolution : int, optional
-        Persistence image resolution per axis. Default is 20.
-    bandwidth : float, optional
-        Gaussian bandwidth in microns. Defaults to one grid cell.
-    distance : str, optional
-        "radial" or "path", see ``tree_distances``. Default is "radial".
-    hidden_dim : int, optional
-        MLP hidden dimension. Default is 128.
-    embed_dim : int, optional
-        Output embedding dimension. Default is 128, matching the Arborist
-        merge readout (CLS plus pooled root curves at latent_dim 64).
-    dropout : float, optional
-        Dropout probability inside the MLP. Default is 0.1.
-    """
-
-    def __init__(
-        self,
-        max_dist,
-        resolution=20,
-        bandwidth=None,
-        distance="radial",
-        hidden_dim=128,
-        embed_dim=128,
-        dropout=0.1,
-    ):
-        super().__init__()
-        self.config = {
-            "max_dist": max_dist,
-            "resolution": resolution,
-            "bandwidth": bandwidth,
-            "distance": distance,
-            "hidden_dim": hidden_dim,
-            "embed_dim": embed_dim,
-            "dropout": dropout,
-        }
-        self.embed_dim = embed_dim
-        self.mlp = nn.Sequential(
-            nn.Linear(resolution * resolution, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, embed_dim),
-        )
-
-    def featurize(self, sample):
-        """
-        Flattened persistence image of one TreeSample.
-
-        Parameters
-        ----------
-        sample : TreeSample
-
-        Returns
-        -------
-        numpy.ndarray
-            Shape (resolution ** 2,) float32.
-        """
-        barcode = persistence_barcode(sample, self.config["distance"])
-        img = persistence_image(
-            barcode,
-            self.config["max_dist"],
-            resolution=self.config["resolution"],
-            bandwidth=self.config["bandwidth"],
-        )
-        return img.ravel()
-
-    @torch._dynamo.disable
-    def forward(self, samples):
-        """
-        Parameters
-        ----------
-        samples : List[TreeSample]
-
-        Returns
-        -------
-        torch.Tensor
-            Shape (B, embed_dim).
-        """
-        feats = np.stack([self.featurize(s) for s in samples])
-        device = next(self.parameters()).device
-        return self.mlp(torch.as_tensor(feats, device=device))
