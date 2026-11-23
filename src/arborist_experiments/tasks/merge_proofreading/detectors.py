@@ -353,13 +353,13 @@ class NEURDMergeDetector(nn.Module):
         }
         self.register_buffer("_device_anchor", torch.zeros(1))
 
-    def score(self, sample):
+    def score(self, tree_sample):
         """
         Merge score of one site: the largest rule margin, angles scaled.
 
         Parameters
         ----------
-        sample : TreeSample
+        tree_sample : TreeSample
             Rooted subgraph from ``arborist.data.datasets``, built by
             ``build_tree_sample``.
 
@@ -367,7 +367,7 @@ class NEURDMergeDetector(nn.Module):
         -------
         float
         """
-        margins = rule_margins(sample, **self.rule_kwargs)
+        margins = rule_margins(tree_sample, **self.rule_kwargs)
         return max(
             margins["high_degree"],
             margins["pass_through"] / self.angle_scale,
@@ -389,8 +389,8 @@ class NEURDMergeDetector(nn.Module):
         torch.Tensor
             Logits of shape (B, 1).
         """
-        samples = x["tree_sample"] if isinstance(x, dict) else x
-        scores = [self.score(s) for s in samples]
+        tree_samples = x["tree_sample"] if isinstance(x, dict) else x
+        scores = [self.score(s) for s in tree_samples]
         return torch.tensor(scores, dtype=torch.float32, device=self._device_anchor.device).unsqueeze(1)
 
     def save(self, path):

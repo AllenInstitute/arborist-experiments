@@ -29,7 +29,7 @@ of the parent) does not fire; they should be tuned on validation sites.
 import numpy as np
 
 
-def root_directions(sample, comparison_distance=20.0, offset=0.0):
+def root_directions(tree_sample, comparison_distance=20.0, offset=0.0):
     """
     Unit direction of each branch leaving the root.
 
@@ -40,7 +40,7 @@ def root_directions(sample, comparison_distance=20.0, offset=0.0):
 
     Parameters
     ----------
-    sample : TreeSample
+    tree_sample : TreeSample
         Rooted subgraph from ``arborist.data.datasets``, built by
         ``build_tree_sample``.
     comparison_distance : float, optional
@@ -57,8 +57,8 @@ def root_directions(sample, comparison_distance=20.0, offset=0.0):
         extent.
     """
     dirs = []
-    for k in sample.root_curve_indices:
-        xyz = np.cumsum(np.asarray(sample.curves[k], dtype=np.float64), axis=0)
+    for k in tree_sample.root_curve_indices:
+        xyz = np.cumsum(np.asarray(tree_sample.curves[k], dtype=np.float64), axis=0)
         arc = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(xyz, axis=0), axis=1))])
         start = xyz[min(np.searchsorted(arc, offset), len(xyz) - 1)]
         end = xyz[min(np.searchsorted(arc, offset + comparison_distance), len(xyz) - 1)]
@@ -91,7 +91,7 @@ def pairwise_angles(directions):
 
 
 def rule_margins(
-    sample,
+    tree_sample,
     high_degree_min=4,
     pass_through_angle=165.0,
     fork_angle=30.0,
@@ -105,7 +105,7 @@ def rule_margins(
 
     Parameters
     ----------
-    sample : TreeSample
+    tree_sample : TreeSample
         Rooted subgraph from ``arborist.data.datasets``, built by
         ``build_tree_sample``.
     high_degree_min : int, optional
@@ -130,7 +130,7 @@ def rule_margins(
         "bend" (degrees past the threshold). Rules that do not apply to the
         node's degree are -inf.
     """
-    directions = root_directions(sample, comparison_distance, offset)
+    directions = root_directions(tree_sample, comparison_distance, offset)
     degree = len(directions)
     angles = pairwise_angles(directions)
     margins = {
