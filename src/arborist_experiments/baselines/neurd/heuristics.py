@@ -122,10 +122,8 @@ def rule_margins(
     Returns
     -------
     dict
-        Keys "high_degree" (branches past the threshold, offset by half a
-        branch so the threshold itself fires), "pass_through", "fork",
-        "bend" (degrees past the threshold). Rules that do not apply to the
-        node's degree are -inf.
+        Margin per rule ("high_degree", "pass_through", "fork", "bend");
+        -inf where a rule does not apply.
     """
     directions = root_directions(tree_sample, comparison_distance, offset)
     degree = len(directions)
