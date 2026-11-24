@@ -4,11 +4,11 @@ Created on Sun November 23 2026
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-TMDDescriptor: represents a rooted subgraph by its flattened TMD
-persistence image. It has no parameters and the same interface as the
-learned graph encoders (a TreeSample batch in, one vector per TreeSample
-out), so a task head can take it in place of Arborist and the head is the
-only trained part, as in the paper.
+TMD (topological morphology descriptor): represents a rooted subgraph by
+its flattened persistence image. It has no parameters and the same
+interface as the learned graph encoders (a TreeSample batch in, one vector
+per TreeSample out), so a task head can take it in place of Arborist and
+the head is the only trained part, as in the paper.
 """
 
 import numpy as np
@@ -21,7 +21,7 @@ from arborist_experiments.baselines.tmd.persistence import (
 )
 
 
-class TMDDescriptor(nn.Module):
+class TMD(nn.Module):
     """
     Parameter-free graph descriptor: the flattened TMD persistence image of
     a rooted subgraph.
