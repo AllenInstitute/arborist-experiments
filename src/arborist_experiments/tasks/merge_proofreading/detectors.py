@@ -4,12 +4,8 @@ Created on Sun November 23 2026
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-Merge detectors: models that score candidate sites of a skeleton graph.
-LearnedMergeDetector fuses any combination of graph and image encoders
-with a FeedForwardNet head; HeuristicMergeDetector scores sites with a set
-of rules. Both share the ``forward(x)`` and ``config`` / ``save``
-conventions of the capsule trainers and benchmark; ``registry.load_detector``
-rebuilds either from a checkpoint.
+Merge detectors that score candidate sites of a skeleton graph, either
+learned from graph and image encoders or from heuristic rules.
 """
 
 import torch
