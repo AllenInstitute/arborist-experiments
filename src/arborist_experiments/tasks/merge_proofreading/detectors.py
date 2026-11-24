@@ -7,7 +7,7 @@ Created on Sun November 23 2026
 Merge detectors: models that score candidate sites of a skeleton graph.
 LearnedMergeDetector fuses any combination of graph and image encoders
 with a FeedForwardNet head; HeuristicMergeDetector scores sites with a set
-of rules. Both share the ``forward(x, task)`` and ``config`` / ``save``
+of rules. Both share the ``forward(x)`` and ``config`` / ``save``
 conventions of the capsule trainers and benchmark; ``registry.load_detector``
 rebuilds either from a checkpoint.
 """
@@ -18,10 +18,13 @@ import torch.nn as nn
 from arborist.utils.util import write_json
 from neuron_proofreader.utils.ml_util import FeedForwardNet
 
+from arborist_experiments.tasks.merge_proofreading.factory import GraphEncoderFactory
+
 
 def _qualname(obj):
-    """Import path of a class or function, used to rebuild it from a config."""
-    obj = obj if isinstance(obj, type) or callable(obj) and not isinstance(obj, nn.Module) else type(obj)
+    """Import path of a function, class, or module instance's class."""
+    if isinstance(obj, nn.Module):
+        obj = type(obj)
     return f"{obj.__module__}.{obj.__qualname__}"
 
 
@@ -40,15 +43,13 @@ class MergeDetector(nn.Module):
         """Extracts the List[TreeSample] from a batch dict or passes a list through."""
         return x["tree_sample"] if isinstance(x, dict) else x
 
-    def forward(self, x, task=None):
+    def forward(self, x):
         """
         Parameters
         ----------
         x : dict or List[TreeSample]
             Batch with "img" (B, C, D, H, W) and/or "tree_sample"
             (List[TreeSample]), or the list alone for graph-only models.
-        task : str, optional
-            Ignored; present for the trainers' ``forward(x, task)`` convention.
 
         Returns
         -------
@@ -89,9 +90,11 @@ class LearnedMergeDetector(MergeDetector):
     Parameters
     ----------
     graph_encoder : torch.nn.Module, optional
-        Maps List[TreeSample] to (B, embed_dim). Default is None.
-    vision_encoder : torch.nn.Module, optional
-        Maps images (B, C, D, H, W) to (B, embed_dim). Default is None.
+        Maps List[TreeSample] to (B, embed_dim); built by
+        ``GraphEncoderFactory`` (e.g. "arborist", "tmd"). Default is None.
+    vision_encoder : VisionEncoder, optional
+        Maps images (B, C, D, H, W) to (B, embed_dim). The same CNN3D in
+        every experiment. Default is None.
     dropout : float, optional
         Dropout on the concatenated embedding. Default is 0.1.
     """
@@ -114,20 +117,19 @@ class LearnedMergeDetector(MergeDetector):
         self.drop = nn.Dropout(dropout)
         self.head = FeedForwardNet(sum(enc.embed_dim for enc in encoders), 1, 3)
 
-        def describe(enc):
-            return None if enc is None else {"type": _qualname(enc), "kwargs": enc.config}
-
         # Name runs by the graph encoder, the part that differs between models
-        named = graph_encoder if graph_encoder is not None else vision_encoder
+        graph_type = "cnn3d" if graph_encoder is None else GraphEncoderFactory.name_of(graph_encoder)
         self.config = {
             "detector_type": _qualname(self),
-            "model_type": f"{type(named).__name__}_{self.modality}",
-            "graph_encoder": describe(graph_encoder),
-            "vision_encoder": describe(vision_encoder),
+            "model_type": f"{graph_type}_{self.modality}",
+            "graph_encoder": None if graph_encoder is None else {
+                "type": graph_type, "kwargs": graph_encoder.config
+            },
+            "vision_encoder": None if vision_encoder is None else vision_encoder.config,
             "dropout": dropout,
         }
 
-    def forward(self, x, task=None):
+    def forward(self, x):
         z = []
         if self.vision_encoder is not None:
             z.append(self.vision_encoder(x["img"]))
@@ -137,7 +139,7 @@ class LearnedMergeDetector(MergeDetector):
         return self.head(self.drop(torch.cat(z, dim=1)))
 
     def half_vision(self):
-        """Runs the image encoder in fp16, as JointProofreader.half_vision does."""
+        """Runs the image encoder in fp16, as MergeModel.half_vision does."""
         if self.vision_encoder is not None:
             self.vision_encoder.half()
         return self
@@ -196,6 +198,6 @@ class HeuristicMergeDetector(MergeDetector):
         margins = self.rules(tree_sample, **self.rule_kwargs)
         return max(self.weights.get(name, 1.0) * margin for name, margin in margins.items())
 
-    def forward(self, x, task=None):
+    def forward(self, x):
         scores = [self.score(s) for s in self.tree_samples(x)]
         return torch.tensor(scores, dtype=torch.float32, device=self._device_anchor.device).unsqueeze(1)

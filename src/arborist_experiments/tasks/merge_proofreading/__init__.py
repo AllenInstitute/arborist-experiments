@@ -1,14 +1,14 @@
 """Merge-error detection at candidate sites of a skeleton graph."""
 
+from arborist.models.arborist import ArboristEncoder
+from neuron_proofreader.models.encoders import VisionEncoder
+
 from arborist_experiments.tasks.merge_proofreading.detectors import (
     HeuristicMergeDetector,
     LearnedMergeDetector,
     MergeDetector,
 )
-from arborist_experiments.tasks.merge_proofreading.encoders import (
-    ArboristEncoder,
-    VisionEncoder,
-)
+from arborist_experiments.tasks.merge_proofreading.factory import GraphEncoderFactory
 from arborist_experiments.tasks.merge_proofreading.registry import (
     build_detector,
     load_detector,

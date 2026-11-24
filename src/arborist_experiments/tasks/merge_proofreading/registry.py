@@ -4,19 +4,22 @@ Created on Mon November 24 2026
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-Rebuilds merge detectors from their configs. Encoders and rule functions
-are recorded in configs by import path, so any importable class or function
-can be used without registering it here.
+Rebuilds merge detectors from their configs. Graph encoders are recorded
+by their factory name, the vision encoder by its kwargs, rule functions by
+import path.
 """
 
 import importlib
 
 import torch
 
+from neuron_proofreader.models.encoders import VisionEncoder
+
 from arborist_experiments.tasks.merge_proofreading.detectors import (
     HeuristicMergeDetector,
     LearnedMergeDetector,
 )
+from arborist_experiments.tasks.merge_proofreading.factory import GraphEncoderFactory
 
 
 def resolve(qualname):
@@ -36,20 +39,20 @@ def resolve(qualname):
     return getattr(importlib.import_module(module), name)
 
 
-def build_encoder(spec):
+def build_graph_encoder(spec):
     """
-    Instantiates an encoder from a config entry.
+    Instantiates a graph encoder from a config entry.
 
     Parameters
     ----------
     spec : dict or None
-        {"type": import path, "kwargs": constructor kwargs}, or None.
+        {"type": factory name, "kwargs": constructor kwargs}, or None.
 
     Returns
     -------
     torch.nn.Module or None
     """
-    return None if spec is None else resolve(spec["type"])(**spec["kwargs"])
+    return None if spec is None else GraphEncoderFactory.build(spec["type"], **spec["kwargs"])
 
 
 def build_detector(config):
@@ -68,8 +71,8 @@ def build_detector(config):
     detector_cls = resolve(config["detector_type"])
     if detector_cls is LearnedMergeDetector:
         return LearnedMergeDetector(
-            graph_encoder=build_encoder(config["graph_encoder"]),
-            vision_encoder=build_encoder(config["vision_encoder"]),
+            graph_encoder=build_graph_encoder(config["graph_encoder"]),
+            vision_encoder=None if config["vision_encoder"] is None else VisionEncoder(**config["vision_encoder"]),
             dropout=config["dropout"],
         )
     if detector_cls is HeuristicMergeDetector:
