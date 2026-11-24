@@ -10,7 +10,7 @@ checkpoints can record it the same way. The vision encoder is the same
 CNN3D in every experiment and is built directly.
 """
 
-from neuron_proofreader.models.encoders import ArboristEncoder
+from arborist.models.arborist import ArboristEncoder
 
 from arborist_experiments.baselines.tmd import TMDDescriptor
 
