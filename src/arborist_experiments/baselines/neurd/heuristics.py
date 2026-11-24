@@ -33,11 +33,6 @@ def root_directions(tree_sample, comparison_distance=20.0, offset=0.0):
     """
     Unit direction of each branch leaving the root.
 
-    Positions along each root curve are recovered by cumulative sum of its
-    finite differences. The direction runs from the point at arc length
-    ``offset`` to the point at arc length ``offset + comparison_distance``, or
-    to the curve's end if shorter.
-
     Parameters
     ----------
     tree_sample : TreeSample
