@@ -18,10 +18,7 @@ import torch.nn as nn
 from arborist.utils.util import write_json
 from neuron_proofreader.utils.ml_util import FeedForwardNet
 
-from arborist_experiments.tasks.merge_proofreading.factory import (
-    GraphEncoderFactory,
-    VisionEncoderFactory,
-)
+from arborist_experiments.tasks.merge_proofreading.factory import GraphEncoderFactory
 
 
 def _qualname(obj):
@@ -96,9 +93,9 @@ class LearnedMergeDetector(MergeDetector):
     graph_encoder : torch.nn.Module, optional
         Maps List[TreeSample] to (B, embed_dim); built by
         ``GraphEncoderFactory`` (e.g. "arborist", "tmd"). Default is None.
-    vision_encoder : torch.nn.Module, optional
-        Maps images (B, C, D, H, W) to (B, embed_dim); built by
-        ``VisionEncoderFactory`` (e.g. "cnn3d"). Default is None.
+    vision_encoder : VisionEncoder, optional
+        Maps images (B, C, D, H, W) to (B, embed_dim). The same CNN3D in
+        every experiment. Default is None.
     dropout : float, optional
         Dropout on the concatenated embedding. Default is 0.1.
     """
@@ -121,19 +118,15 @@ class LearnedMergeDetector(MergeDetector):
         self.drop = nn.Dropout(dropout)
         self.head = FeedForwardNet(sum(enc.embed_dim for enc in encoders), 1, 3)
 
-        def describe(factory, enc):
-            return None if enc is None else {"type": factory.name_of(enc), "kwargs": enc.config}
-
-        graph_spec = describe(GraphEncoderFactory, graph_encoder)
-        vision_spec = describe(VisionEncoderFactory, vision_encoder)
-
         # Name runs by the graph encoder, the part that differs between models
-        named = graph_spec if graph_spec is not None else vision_spec
+        graph_type = "cnn3d" if graph_encoder is None else GraphEncoderFactory.name_of(graph_encoder)
         self.config = {
             "detector_type": _qualname(self),
-            "model_type": f"{named['type']}_{self.modality}",
-            "graph_encoder": graph_spec,
-            "vision_encoder": vision_spec,
+            "model_type": f"{graph_type}_{self.modality}",
+            "graph_encoder": None if graph_encoder is None else {
+                "type": graph_type, "kwargs": graph_encoder.config
+            },
+            "vision_encoder": None if vision_encoder is None else vision_encoder.config,
             "dropout": dropout,
         }
 

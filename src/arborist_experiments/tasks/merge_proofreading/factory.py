@@ -4,25 +4,26 @@ Created on Mon November 24 2026
 @author: Anna Grim
 @email: anna.grim@alleninstitute.org
 
-Factories that build encoders by name, so a training routine can pick the
-graph and vision encoders of a LearnedMergeDetector from a config string
-and checkpoints can record them the same way.
+Factory that builds graph encoders by name, so a training routine can pick
+the graph encoder of a LearnedMergeDetector from a config string and
+checkpoints can record it the same way. The vision encoder is the same
+CNN3D in every experiment and is built directly.
 """
 
 from arborist_experiments.baselines.tmd import TMDDescriptor
-from arborist_experiments.tasks.merge_proofreading.encoders import (
-    ArboristEncoder,
-    VisionEncoder,
-)
+from arborist_experiments.tasks.merge_proofreading.encoders import ArboristEncoder
 
 
-class EncoderFactory:
+class GraphEncoderFactory:
     """
-    Base factory: a name-to-class registry with ``build``, ``register`` and
-    the reverse lookup ``name_of``. Subclasses set ``registry``.
+    Graph encoders: List[TreeSample] -> (B, embed_dim). Arborist and the
+    morphology baselines, keyed by name.
     """
 
-    registry = {}
+    registry = {
+        "arborist": ArboristEncoder,
+        "tmd": TMDDescriptor,
+    }
 
     @classmethod
     def build(cls, encoder_type, *args, **kwargs):
@@ -80,23 +81,3 @@ class EncoderFactory:
     def types(cls):
         """Registered encoder names."""
         return sorted(cls.registry)
-
-
-class GraphEncoderFactory(EncoderFactory):
-    """
-    Graph encoders: List[TreeSample] -> (B, embed_dim). Arborist and the
-    morphology baselines.
-    """
-
-    registry = {
-        "arborist": ArboristEncoder,
-        "tmd": TMDDescriptor,
-    }
-
-
-class VisionEncoderFactory(EncoderFactory):
-    """Image encoders: (B, C, D, H, W) -> (B, embed_dim)."""
-
-    registry = {
-        "cnn3d": VisionEncoder,
-    }
