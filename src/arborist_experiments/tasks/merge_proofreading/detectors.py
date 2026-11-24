@@ -7,7 +7,7 @@ Created on Sun November 23 2026
 Merge detectors: models that score candidate sites of a skeleton graph.
 LearnedMergeDetector fuses any combination of graph and image encoders
 with a FeedForwardNet head; HeuristicMergeDetector scores sites with a set
-of rules. Both share the ``forward(x, task)`` and ``config`` / ``save``
+of rules. Both share the ``forward(x)`` and ``config`` / ``save``
 conventions of the capsule trainers and benchmark; ``registry.load_detector``
 rebuilds either from a checkpoint.
 """
@@ -43,15 +43,13 @@ class MergeDetector(nn.Module):
         """Extracts the List[TreeSample] from a batch dict or passes a list through."""
         return x["tree_sample"] if isinstance(x, dict) else x
 
-    def forward(self, x, task=None):
+    def forward(self, x):
         """
         Parameters
         ----------
         x : dict or List[TreeSample]
             Batch with "img" (B, C, D, H, W) and/or "tree_sample"
             (List[TreeSample]), or the list alone for graph-only models.
-        task : str, optional
-            Ignored; present for the trainers' ``forward(x, task)`` convention.
 
         Returns
         -------
@@ -131,7 +129,7 @@ class LearnedMergeDetector(MergeDetector):
             "dropout": dropout,
         }
 
-    def forward(self, x, task=None):
+    def forward(self, x):
         z = []
         if self.vision_encoder is not None:
             z.append(self.vision_encoder(x["img"]))
@@ -200,6 +198,6 @@ class HeuristicMergeDetector(MergeDetector):
         margins = self.rules(tree_sample, **self.rule_kwargs)
         return max(self.weights.get(name, 1.0) * margin for name, margin in margins.items())
 
-    def forward(self, x, task=None):
+    def forward(self, x):
         scores = [self.score(s) for s in self.tree_samples(x)]
         return torch.tensor(scores, dtype=torch.float32, device=self._device_anchor.device).unsqueeze(1)
