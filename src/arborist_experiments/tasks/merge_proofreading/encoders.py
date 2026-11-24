@@ -5,7 +5,7 @@ Created on Mon November 24 2026
 @email: anna.grim@alleninstitute.org
 
 Encoders shared by the merge detectors: the Arborist graph encoder with the
-merge readout, and the image encoder from JointProofreader's merge path.
+merge readout, and the image encoder of neuron_proofreader's MergeModel.
 Every encoder maps a batch to one embedding per site and exposes
 ``embed_dim`` and a ``config`` of its constructor arguments, the same
 contract the baseline encoders in ``baselines`` follow.
@@ -64,7 +64,7 @@ class ArboristEncoder(nn.Module):
 
 class VisionEncoder(nn.Module):
     """
-    Image encoder from JointProofreader's merge path: a CNN3D backbone with
+    Image encoder of neuron_proofreader's MergeModel: a CNN3D backbone with
     multi-scale center-weighted pooling, a merge-specific 1x1 conv and pool
     on the final stage, and a projection to the image embedding.
 
@@ -95,6 +95,7 @@ class VisionEncoder(nn.Module):
         final_idx = self.backbone.pool_stage_idxs[-1]
         final_channels = self.backbone.encode.blocks[final_idx].out_channels
         sigma = self.backbone.config.get("center_pool_sigma", 0.4)
+
         learnable_sigma = self.backbone.config.get("learnable_center_sigma", True)
         self.task_conv = nn.Conv3d(final_channels, final_channels, kernel_size=1)
         self.task_pool = CenterWeightedPool3D(sigma=sigma, learnable=learnable_sigma)

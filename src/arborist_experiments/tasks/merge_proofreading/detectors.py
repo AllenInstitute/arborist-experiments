@@ -139,7 +139,7 @@ class LearnedMergeDetector(MergeDetector):
         return self.head(self.drop(torch.cat(z, dim=1)))
 
     def half_vision(self):
-        """Runs the image encoder in fp16, as JointProofreader.half_vision does."""
+        """Runs the image encoder in fp16, as MergeModel.half_vision does."""
         if self.vision_encoder is not None:
             self.vision_encoder.half()
         return self
