@@ -87,12 +87,12 @@ def pairwise_angles(directions):
 
 def rule_margins(
     tree_sample,
-    high_degree_min=4,
-    pass_through_angle=165.0,
-    fork_angle=30.0,
     bend_angle=80.0,
     comparison_distance=20.0,
+    fork_angle=30.0,
+    high_degree_min=4,
     offset=0.0,
+    pass_through_angle=165.0,
 ):
     """
     Signed margin of each NEURD rule at the root; positive means the rule
@@ -103,19 +103,21 @@ def rule_margins(
     tree_sample : TreeSample
         Rooted subgraph from ``arborist.data.datasets``, built by
         ``build_tree_sample``.
-    high_degree_min : int, optional
-        Root degree at and above which the node is flagged. Default is 4.
-    pass_through_angle : float, optional
-        Minimum angle (degrees) between two branches for them to count as
-        one fiber passing straight through the node. Default is 165.
-    fork_angle : float, optional
-        Maximum angle (degrees) between two branches for them to count as a
-        near-parallel fork. Default is 30.
     bend_angle : float, optional
         Minimum turn (degrees) at a degree-2 node to flag it; the two
         branches then meet at an angle below 180 - bend_angle. Default is 80.
-    comparison_distance, offset : float, optional
+    comparison_distance : float, optional
         See ``root_directions``.
+    fork_angle : float, optional
+        Maximum angle (degrees) between two branches for them to count as a
+        near-parallel fork. Default is 30.
+    high_degree_min : int, optional
+        Root degree at and above which the node is flagged. Default is 4.
+    offset : float, optional
+        See ``root_directions``.
+    pass_through_angle : float, optional
+        Minimum angle (degrees) between two branches for them to count as
+        one fiber passing straight through the node. Default is 165.
 
     Returns
     -------
