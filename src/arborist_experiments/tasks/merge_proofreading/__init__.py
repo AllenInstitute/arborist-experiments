@@ -9,6 +9,10 @@ from arborist_experiments.tasks.merge_proofreading.encoders import (
     ArboristEncoder,
     VisionEncoder,
 )
+from arborist_experiments.tasks.merge_proofreading.factory import (
+    GraphEncoderFactory,
+    VisionEncoderFactory,
+)
 from arborist_experiments.tasks.merge_proofreading.registry import (
     build_detector,
     load_detector,

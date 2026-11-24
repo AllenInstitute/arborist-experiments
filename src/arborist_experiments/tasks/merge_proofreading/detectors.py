@@ -18,6 +18,11 @@ import torch.nn as nn
 from arborist.utils.util import write_json
 from neuron_proofreader.utils.ml_util import FeedForwardNet
 
+from arborist_experiments.tasks.merge_proofreading.factory import (
+    GraphEncoderFactory,
+    VisionEncoderFactory,
+)
+
 
 def _qualname(obj):
     """Import path of a class or function, used to rebuild it from a config."""
@@ -89,9 +94,11 @@ class LearnedMergeDetector(MergeDetector):
     Parameters
     ----------
     graph_encoder : torch.nn.Module, optional
-        Maps List[TreeSample] to (B, embed_dim). Default is None.
+        Maps List[TreeSample] to (B, embed_dim); built by
+        ``GraphEncoderFactory`` (e.g. "arborist", "tmd"). Default is None.
     vision_encoder : torch.nn.Module, optional
-        Maps images (B, C, D, H, W) to (B, embed_dim). Default is None.
+        Maps images (B, C, D, H, W) to (B, embed_dim); built by
+        ``VisionEncoderFactory`` (e.g. "cnn3d"). Default is None.
     dropout : float, optional
         Dropout on the concatenated embedding. Default is 0.1.
     """
@@ -114,16 +121,19 @@ class LearnedMergeDetector(MergeDetector):
         self.drop = nn.Dropout(dropout)
         self.head = FeedForwardNet(sum(enc.embed_dim for enc in encoders), 1, 3)
 
-        def describe(enc):
-            return None if enc is None else {"type": _qualname(enc), "kwargs": enc.config}
+        def describe(factory, enc):
+            return None if enc is None else {"type": factory.name_of(enc), "kwargs": enc.config}
+
+        graph_spec = describe(GraphEncoderFactory, graph_encoder)
+        vision_spec = describe(VisionEncoderFactory, vision_encoder)
 
         # Name runs by the graph encoder, the part that differs between models
-        named = graph_encoder if graph_encoder is not None else vision_encoder
+        named = graph_spec if graph_spec is not None else vision_spec
         self.config = {
             "detector_type": _qualname(self),
-            "model_type": f"{type(named).__name__}_{self.modality}",
-            "graph_encoder": describe(graph_encoder),
-            "vision_encoder": describe(vision_encoder),
+            "model_type": f"{named['type']}_{self.modality}",
+            "graph_encoder": graph_spec,
+            "vision_encoder": vision_spec,
             "dropout": dropout,
         }
 
