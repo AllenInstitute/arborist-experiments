@@ -13,11 +13,12 @@ import importlib
 
 import torch
 
+from neuron_proofreader.models.encoders import VisionEncoder
+
 from arborist_experiments.tasks.merge_proofreading.detectors import (
     HeuristicMergeDetector,
     LearnedMergeDetector,
 )
-from arborist_experiments.tasks.merge_proofreading.encoders import VisionEncoder
 from arborist_experiments.tasks.merge_proofreading.factory import GraphEncoderFactory
 
 
