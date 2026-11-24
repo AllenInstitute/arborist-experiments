@@ -22,8 +22,9 @@ from arborist_experiments.tasks.merge_proofreading.factory import GraphEncoderFa
 
 
 def _qualname(obj):
-    """Import path of a class or function, used to rebuild it from a config."""
-    obj = obj if isinstance(obj, type) or callable(obj) and not isinstance(obj, nn.Module) else type(obj)
+    """Import path of a function, class, or module instance's class."""
+    if isinstance(obj, nn.Module):
+        obj = type(obj)
     return f"{obj.__module__}.{obj.__qualname__}"
 
 
