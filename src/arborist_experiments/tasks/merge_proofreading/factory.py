@@ -12,7 +12,7 @@ CNN3D in every experiment and is built directly.
 
 from arborist.models.arborist import ArboristEncoder
 
-from arborist_experiments.baselines.tmd import TMDDescriptor
+from arborist_experiments.baselines.tmd import TMD
 
 
 class GraphEncoderFactory:
@@ -23,7 +23,7 @@ class GraphEncoderFactory:
 
     registry = {
         "arborist": ArboristEncoder,
-        "tmd": TMDDescriptor,
+        "tmd": TMD,
     }
 
     @classmethod
