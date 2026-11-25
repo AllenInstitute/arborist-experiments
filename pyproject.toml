@@ -7,15 +7,20 @@ requires-python = ">=3.10"
 dependencies = [
     "arborist @ git+https://github.com/AllenInstitute/arborist.git",
     "neuron-proofreader @ git+https://github.com/AllenInstitute/neuron-proofreader.git",
+    "morphopy",
     "networkx",
     "numpy",
     "pandas",
+    "persim",
     "pytest>=8.3.5",
     "ruff>=0.9.9",
     "torch>=2.1.0",
 ]
 
 [project.optional-dependencies]
+# extract_upright_morphometrics only. neuron-morphology requires allensdk, whose own pins can conflict
+# with the rest of the environment, so it is opt-in.
+upright = ["neuron-morphology"]
 docs = [
     'Sphinx',
     'sphinx-jinja',
